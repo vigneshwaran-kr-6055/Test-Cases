@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Case Analyser – SDLC Dashboard</title>
+    <link rel="stylesheet" href="test-case-analyzer.css">
+    <!-- SheetJS for XLSX parsing (client-side, no server required) -->
+    <script src="xlsx.full.min.js"></script>
+</head>
+<body>
+
+<header>
+    <a class="back-link" href="index.html">← Dashboard</a>
+    <h1>🔍 Test Case Gap Analyser</h1>
+</header>
+
+<main>
+
+    <!-- Upload Card -->
+    <div class="upload-card">
+        <h2>Upload your test case spreadsheet</h2>
+        <p>Supports <strong>.xlsx</strong>, <strong>.xls</strong>, and <strong>.csv</strong> files.
+           The tool reads your test cases, understands the feature flow, and highlights missing
+           <em>functional</em>, <em>privacy</em>, and <em>security</em> test cases.</p>
+
+        <div class="drop-zone" id="drop-zone">
+            <input type="file" id="file-input" accept=".xlsx,.xls,.csv" aria-label="Upload test case file">
+            <span class="icon">📂</span>
+            <div class="label" id="drop-label">Drag &amp; drop your file here, or click to browse</div>
+            <div class="hint"  id="drop-hint">.xlsx · .xls · .csv</div>
+        </div>
+
+        <button class="btn-analyze" id="btn-analyze" disabled>Analyse Test Cases</button>
+    </div>
+
+    <!-- Status bar -->
+    <div id="status-bar" role="status" aria-live="polite"></div>
+
+    <!-- Summary -->
+    <div class="section-card" id="sec-summary">
+        <h2>📊 Summary</h2>
+        <div class="stats-row">
+            <div class="stat-chip">
+                <div class="num" id="stat-total">0</div>
+                <div class="lbl">Total test cases</div>
+            </div>
+            <div class="stat-chip">
+                <div class="num" id="stat-features">0</div>
+                <div class="lbl">Features / modules detected</div>
+            </div>
+            <div class="stat-chip" style="border-top: 3px solid #e53935;">
+                <div class="num" id="stat-fn-miss" style="color:#e53935;">0</div>
+                <div class="lbl">Functional gaps</div>
+            </div>
+            <div class="stat-chip" style="border-top: 3px solid #fb8c00;">
+                <div class="num" id="stat-pr-miss" style="color:#fb8c00;">0</div>
+                <div class="lbl">Privacy gaps</div>
+            </div>
+            <div class="stat-chip" style="border-top: 3px solid #8e24aa;">
+                <div class="num" id="stat-sec-miss" style="color:#8e24aa;">0</div>
+                <div class="lbl">Security gaps</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features -->
+    <div class="section-card" id="sec-features">
+        <h2>🗂 Detected Features / Modules</h2>
+        <div class="feature-tags" id="feature-tags-container"></div>
+    </div>
+
+    <!-- Functional Gaps -->
+    <div class="section-card" id="sec-functional">
+        <h2>⚙️ Functional Test Gaps</h2>
+        <div class="gap-body"></div>
+    </div>
+
+    <!-- Privacy Gaps -->
+    <div class="section-card" id="sec-privacy">
+        <h2>🔒 Privacy Test Gaps</h2>
+        <div class="gap-body"></div>
+    </div>
+
+    <!-- Security Gaps -->
+    <div class="section-card" id="sec-security">
+        <h2>🛡 Security Test Gaps</h2>
+        <div class="gap-body"></div>
+    </div>
+
+    <!-- Parsed Data Table -->
+    <div class="section-card" id="sec-table">
+        <h2>📋 Parsed Test Cases</h2>
+        <div class="table-wrapper">
+            <table>
+                <thead id="table-head"></thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+</main>
+
+<script src="test-case-analyzer.js"></script>
+</body>
+</html>
