@@ -3,7 +3,7 @@
  * Parses an uploaded XLSX file of test cases and identifies
  * missing functional, privacy, and security test cases.
  *
- * Depends on SheetJS (xlsx) loaded locally from xlsx.full.min.js.
+ * Depends on read-excel-file (v7) loaded locally from read-excel-file.min.js.
  */
 
 'use strict';
@@ -211,8 +211,8 @@ function analyzeTestCases(rows) {
 
     function handleFileSelected(file) {
         const name = file.name.toLowerCase();
-        if (!name.endsWith('.xlsx') && !name.endsWith('.xls') && !name.endsWith('.csv')) {
-            setStatus('⚠ Please upload an .xlsx, .xls, or .csv file.', 'error');
+        if (!name.endsWith('.xlsx') && !name.endsWith('.csv')) {
+            setStatus('⚠ Please upload an .xlsx or .csv file.', 'error');
             btnAnalyze.disabled = true;
             return;
         }
@@ -227,29 +227,89 @@ function analyzeTestCases(rows) {
         readFile(file);
     }
 
+    /**
+     * Convert an array-of-arrays (from read-excel-file) where the first row
+     * is the header into an array of plain objects.
+     */
+    function rowsToObjects(rawRows) {
+        if (!rawRows || rawRows.length < 2) return [];
+        const headers = rawRows[0].map(h => (h !== null && h !== undefined ? String(h) : ''));
+        return rawRows.slice(1).map(row =>
+            Object.fromEntries(headers.map((h, i) => [h, row[i] !== null && row[i] !== undefined ? row[i] : '']))
+        );
+    }
+
+    /**
+     * Parse a CSV text string into an array of objects using the first row as headers.
+     * Handles quoted fields containing commas.
+     */
+    function parseCSV(text) {
+        const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+        if (lines.length < 2) return [];
+        function splitLine(line) {
+            const fields = [];
+            let cur = '', inQuote = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (ch === '"') {
+                    if (inQuote && line[i + 1] === '"') { cur += '"'; i++; }
+                    else inQuote = !inQuote;
+                } else if (ch === ',' && !inQuote) {
+                    fields.push(cur); cur = '';
+                } else {
+                    cur += ch;
+                }
+            }
+            fields.push(cur);
+            return fields;
+        }
+        const headers = splitLine(lines[0]);
+        return lines.slice(1).map(line => {
+            const vals = splitLine(line);
+            return Object.fromEntries(headers.map((h, i) => [h, vals[i] !== null && vals[i] !== undefined ? vals[i] : '']));
+        });
+    }
+
     function readFile(file) {
         setStatus('Reading file…', 'info');
-        const reader = new FileReader();
-        reader.onload = e => {
-            try {
-                const data  = new Uint8Array(e.target.result);
-                const wb    = XLSX.read(data, { type: 'array' });
-                const sheet = wb.Sheets[wb.SheetNames[0]];
-                const json  = XLSX.utils.sheet_to_json(sheet, { defval: '' });
-                if (!json.length) {
-                    setStatus('⚠ The first sheet appears to be empty.', 'error');
+        const name = file.name.toLowerCase();
+
+        if (name.endsWith('.csv')) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                try {
+                    const rows = parseCSV(e.target.result);
+                    if (!rows.length) {
+                        setStatus('⚠ The CSV file appears to be empty or has only a header row.', 'error');
+                        btnAnalyze.disabled = true;
+                        return;
+                    }
+                    parsedRows = rows;
+                    setStatus(`✔ Parsed ${rows.length} rows from CSV. Click Analyse.`, 'success');
+                    btnAnalyze.disabled = false;
+                } catch (err) {
+                    setStatus('⚠ Could not parse CSV: ' + err.message, 'error');
+                    btnAnalyze.disabled = true;
+                }
+            };
+            reader.readAsText(file);
+        } else {
+            // .xlsx via read-excel-file
+            readXlsxFile(file).then(rawRows => {
+                const rows = rowsToObjects(rawRows);
+                if (!rows.length) {
+                    setStatus('⚠ The first sheet appears to be empty or has only a header row.', 'error');
                     btnAnalyze.disabled = true;
                     return;
                 }
-                parsedRows = json;
-                setStatus(`✔ Parsed ${json.length} rows from "${wb.SheetNames[0]}". Click Analyse.`, 'success');
+                parsedRows = rows;
+                setStatus(`✔ Parsed ${rows.length} rows. Click Analyse.`, 'success');
                 btnAnalyze.disabled = false;
-            } catch (err) {
+            }).catch(err => {
                 setStatus('⚠ Could not parse file: ' + err.message, 'error');
                 btnAnalyze.disabled = true;
-            }
-        };
-        reader.readAsArrayBuffer(file);
+            });
+        }
     }
 
     /* ── Analyse button ── */
@@ -373,7 +433,7 @@ function analyzeTestCases(rows) {
             const trRow = document.createElement('tr');
             r.headers.forEach(h => {
                 const td = document.createElement('td');
-                td.textContent = row[h] != null ? row[h] : '';
+                td.textContent = row[h] !== null && row[h] !== undefined ? row[h] : '';
                 trRow.appendChild(td);
             });
             tbody.appendChild(trRow);

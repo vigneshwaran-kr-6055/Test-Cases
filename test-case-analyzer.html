@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Test Case Analyser – SDLC Dashboard</title>
     <link rel="stylesheet" href="test-case-analyzer.css">
-    <!-- SheetJS for XLSX parsing (client-side, no server required) -->
-    <script src="xlsx.full.min.js"></script>
+    <!-- read-excel-file for XLSX parsing (client-side, no server required) -->
+    <script src="read-excel-file.min.js"></script>
 </head>
 <body>
 
@@ -20,15 +20,15 @@
     <!-- Upload Card -->
     <div class="upload-card">
         <h2>Upload your test case spreadsheet</h2>
-        <p>Supports <strong>.xlsx</strong>, <strong>.xls</strong>, and <strong>.csv</strong> files.
+        <p>Supports <strong>.xlsx</strong> and <strong>.csv</strong> files.
            The tool reads your test cases, understands the feature flow, and highlights missing
            <em>functional</em>, <em>privacy</em>, and <em>security</em> test cases.</p>
 
         <div class="drop-zone" id="drop-zone">
-            <input type="file" id="file-input" accept=".xlsx,.xls,.csv" aria-label="Upload test case file">
+            <input type="file" id="file-input" accept=".xlsx,.csv" aria-label="Upload test case file">
             <span class="icon">📂</span>
             <div class="label" id="drop-label">Drag &amp; drop your file here, or click to browse</div>
-            <div class="hint"  id="drop-hint">.xlsx · .xls · .csv</div>
+            <div class="hint"  id="drop-hint">.xlsx · .csv</div>
         </div>
 
         <button class="btn-analyze" id="btn-analyze" disabled>Analyse Test Cases</button>
