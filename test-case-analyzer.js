@@ -14,21 +14,21 @@
 
 // Functional patterns – each entry is {id, label, keywords, scenarios}
 const FUNCTIONAL_CHECKS = [
-    { id: 'happy-path',      label: 'Happy / positive path tests',       keywords: ['success', 'valid', 'positive', 'happy', 'correct', 'should work', 'verify that', 'able to'],
+    { id: 'happy-path',      label: 'Happy / positive path tests',       severity: 'critical',     keywords: ['success', 'valid', 'positive', 'happy', 'correct', 'should work', 'verify that', 'able to'],
       scenarios: [
         'Verify user can complete the primary workflow end-to-end with valid inputs.',
         'Verify the expected success message / confirmation is displayed on completion.',
         'Verify data is correctly saved and retrievable after a successful operation.',
         'Verify the UI state updates correctly after a successful action.',
       ]},
-    { id: 'negative-path',   label: 'Negative / invalid input tests',    keywords: ['invalid', 'negative', 'incorrect', 'wrong', 'bad input', 'fail', 'reject', 'error message', 'not allowed'],
+    { id: 'negative-path',   label: 'Negative / invalid input tests',    severity: 'major',        keywords: ['invalid', 'negative', 'incorrect', 'wrong', 'bad input', 'fail', 'reject', 'error message', 'not allowed'],
       scenarios: [
         'Verify an appropriate error message is shown when invalid data is submitted.',
         'Verify the system rejects empty required fields and highlights them.',
         'Verify the user cannot proceed past a step with incorrect/missing inputs.',
         'Verify attempting a forbidden action returns a clear denial message.',
       ]},
-    { id: 'boundary',        label: 'Boundary / edge value tests',       keywords: ['boundary', 'edge', 'limit', 'min', 'max', 'maximum', 'minimum', 'overflow', 'empty', 'zero', 'null'],
+    { id: 'boundary',        label: 'Boundary / edge value tests',       severity: 'major',        keywords: ['boundary', 'edge', 'limit', 'min', 'max', 'maximum', 'minimum', 'overflow', 'empty', 'zero', 'null'],
       scenarios: [
         'Verify the field accepts exactly the maximum allowed number of characters.',
         'Verify the field rejects input one character beyond the maximum limit.',
@@ -36,14 +36,14 @@ const FUNCTIONAL_CHECKS = [
         'Verify the system handles null / empty values gracefully without crashing.',
         'Verify numeric overflow or extremely large values are rejected with a clear message.',
       ]},
-    { id: 'error-handling',  label: 'Error handling tests',              keywords: ['error', 'exception', 'timeout', 'network failure', '500', '404', 'unavailable', 'retry'],
+    { id: 'error-handling',  label: 'Error handling tests',              severity: 'major',        keywords: ['error', 'exception', 'timeout', 'network failure', '500', '404', 'unavailable', 'retry'],
       scenarios: [
         'Verify a user-friendly error page / message is shown on a server 500 response.',
         'Verify a 404 page is displayed for invalid or non-existent routes.',
         'Verify the application handles network timeouts gracefully and offers a retry option.',
         'Verify partial failures (one service down) do not break the entire page.',
       ]},
-    { id: 'ui-validation',   label: 'UI / form validation tests',        keywords: ['form', 'field', 'required', 'placeholder', 'dropdown', 'checkbox', 'radio', 'submit button', 'validation message'],
+    { id: 'ui-validation',   label: 'UI / form validation tests',        severity: 'minor',        keywords: ['form', 'field', 'required', 'placeholder', 'dropdown', 'checkbox', 'radio', 'submit button', 'validation message'],
       scenarios: [
         'Verify required field indicators (asterisks / labels) are visible.',
         'Verify inline validation messages appear on blur for invalid fields.',
@@ -51,7 +51,7 @@ const FUNCTIONAL_CHECKS = [
         'Verify the submit button is disabled until all required fields are valid.',
         'Verify checkbox and radio button states are toggled correctly.',
       ]},
-    { id: 'pagination',      label: 'Pagination / list navigation tests',keywords: ['page', 'pagination', 'next', 'previous', 'sort', 'filter', 'search results', 'load more'],
+    { id: 'pagination',      label: 'Pagination / list navigation tests',severity: 'minor',        keywords: ['page', 'pagination', 'next', 'previous', 'sort', 'filter', 'search results', 'load more'],
       scenarios: [
         'Verify the "Next" button navigates to the next page of results.',
         'Verify the "Previous" button is disabled on the first page.',
@@ -59,7 +59,7 @@ const FUNCTIONAL_CHECKS = [
         'Verify the correct number of items per page is displayed.',
         'Verify search / filter results update the paginated list accurately.',
       ]},
-    { id: 'crud',            label: 'CRUD operation tests (C/R/U/D)',    keywords: ['create', 'read', 'update', 'delete', 'add', 'edit', 'remove', 'save', 'modify'],
+    { id: 'crud',            label: 'CRUD operation tests (C/R/U/D)',    severity: 'critical',     keywords: ['create', 'read', 'update', 'delete', 'add', 'edit', 'remove', 'save', 'modify'],
       scenarios: [
         'Verify a new record can be created and appears in the list.',
         'Verify record details can be viewed/read without modification.',
@@ -67,21 +67,21 @@ const FUNCTIONAL_CHECKS = [
         'Verify a record can be deleted and no longer appears after deletion.',
         'Verify a confirmation prompt is shown before irreversible delete.',
       ]},
-    { id: 'concurrency',     label: 'Concurrency / race condition tests', keywords: ['concurrent', 'simultaneous', 'parallel', 'race condition', 'lock', 'duplicate submission'],
+    { id: 'concurrency',     label: 'Concurrency / race condition tests', severity: 'major',        keywords: ['concurrent', 'simultaneous', 'parallel', 'race condition', 'lock', 'duplicate submission'],
       scenarios: [
         'Verify duplicate form submissions are prevented (button disabled after first click).',
         'Verify concurrent edits to the same record by two users are handled gracefully.',
         'Verify no data corruption occurs when multiple users save simultaneously.',
         'Verify optimistic-locking or conflict resolution messages are shown when needed.',
       ]},
-    { id: 'performance',     label: 'Performance / load tests',          keywords: ['performance', 'load', 'stress', 'latency', 'response time', 'throughput', 'scalability'],
+    { id: 'performance',     label: 'Performance / load tests',          severity: 'minor',        keywords: ['performance', 'load', 'stress', 'latency', 'response time', 'throughput', 'scalability'],
       scenarios: [
         'Verify the main page loads within the acceptable time threshold (e.g. < 3 s).',
         'Verify the application remains responsive under expected concurrent user load.',
         'Verify API response times stay within SLA under normal traffic.',
         'Verify performance does not degrade significantly as data volume grows.',
       ]},
-    { id: 'accessibility',   label: 'Accessibility tests',               keywords: ['accessibility', 'screen reader', 'keyboard navigation', 'aria', 'wcag', 'a11y', 'tab order'],
+    { id: 'accessibility',   label: 'Accessibility tests',               severity: 'minor',        keywords: ['accessibility', 'screen reader', 'keyboard navigation', 'aria', 'wcag', 'a11y', 'tab order'],
       scenarios: [
         'Verify all interactive elements are reachable and operable via keyboard alone.',
         'Verify ARIA labels / roles are present on all form controls and icons.',
@@ -93,7 +93,7 @@ const FUNCTIONAL_CHECKS = [
 
 // Privacy patterns
 const PRIVACY_CHECKS = [
-    { id: 'pii-display',     label: 'PII masking / display tests (emails, phone, SSN, DOB)',  keywords: ['pii', 'personal', 'mask', 'redact', 'email', 'phone', 'ssn', 'date of birth', 'dob', 'address', 'name visible', 'sensitive data'],
+    { id: 'pii-display',     label: 'PII masking / display tests (emails, phone, SSN, DOB)',  severity: 'critical',     keywords: ['pii', 'personal', 'mask', 'redact', 'email', 'phone', 'ssn', 'date of birth', 'dob', 'address', 'name visible', 'sensitive data'],
       scenarios: [
         'Verify email addresses are partially masked (e.g. j***@example.com) in the UI.',
         'Verify phone numbers display only the last 4 digits.',
@@ -101,7 +101,7 @@ const PRIVACY_CHECKS = [
         'Verify PII fields are not included in client-side logs or error messages.',
         'Verify sensitive data is not exposed in URL query parameters.',
       ]},
-    { id: 'consent',         label: 'User consent & opt-in/opt-out tests',                    keywords: ['consent', 'opt-in', 'opt-out', 'gdpr', 'ccpa', 'privacy policy', 'cookie', 'agree', 'permission'],
+    { id: 'consent',         label: 'User consent & opt-in/opt-out tests',                    severity: 'critical',     keywords: ['consent', 'opt-in', 'opt-out', 'gdpr', 'ccpa', 'privacy policy', 'cookie', 'agree', 'permission'],
       scenarios: [
         'Verify a consent / cookie banner is shown to new users on first visit.',
         'Verify users can opt-out of non-essential cookies and the preference is saved.',
@@ -109,14 +109,14 @@ const PRIVACY_CHECKS = [
         'Verify the privacy policy link is accessible from the consent form.',
         'Verify withdrawing consent stops further data processing immediately.',
       ]},
-    { id: 'data-retention',  label: 'Data retention & deletion tests',                        keywords: ['retention', 'delete account', 'right to erasure', 'data deletion', 'purge', 'anonymize', 'right to be forgotten'],
+    { id: 'data-retention',  label: 'Data retention & deletion tests',                        severity: 'major',        keywords: ['retention', 'delete account', 'right to erasure', 'data deletion', 'purge', 'anonymize', 'right to be forgotten'],
       scenarios: [
         'Verify user data is purged / anonymized after the defined retention period.',
         'Verify a user can request full account deletion and all their data is removed.',
         'Verify deletion is confirmed to the user after the data erasure request is fulfilled.',
         'Verify backup copies are also cleared within the defined timeframe.',
       ]},
-    { id: 'data-access',     label: 'Data access control tests (who can see what)',           keywords: ['access control', 'who can see', 'visibility', 'profile privacy', 'data sharing', 'expose', 'leak', 'third party'],
+    { id: 'data-access',     label: 'Data access control tests (who can see what)',           severity: 'critical',     keywords: ['access control', 'who can see', 'visibility', 'profile privacy', 'data sharing', 'expose', 'leak', 'third party'],
       scenarios: [
         'Verify a user can only view their own personal data, not other users\'.',
         'Verify the admin role can view all records but regular users cannot.',
@@ -124,14 +124,14 @@ const PRIVACY_CHECKS = [
         'Verify API endpoints do not return data belonging to a different user.',
         'Verify third-party data sharing is clearly disclosed and controllable by the user.',
       ]},
-    { id: 'audit-log',       label: 'Audit / activity log tests',                             keywords: ['audit', 'activity log', 'history', 'track', 'log access', 'audit trail'],
+    { id: 'audit-log',       label: 'Audit / activity log tests',                             severity: 'major',        keywords: ['audit', 'activity log', 'history', 'track', 'log access', 'audit trail'],
       scenarios: [
         'Verify successful and failed login attempts are recorded in the audit log.',
         'Verify access to sensitive data generates an audit-log entry with timestamp and user.',
         'Verify audit log entries cannot be modified or deleted by regular users.',
         'Verify admins can filter / search the audit log by user, date, and action.',
       ]},
-    { id: 'data-export',     label: 'Data export / portability tests',                        keywords: ['export', 'download data', 'data portability', 'backup', 'portable'],
+    { id: 'data-export',     label: 'Data export / portability tests',                        severity: 'minor',        keywords: ['export', 'download data', 'data portability', 'backup', 'portable'],
       scenarios: [
         'Verify users can download their personal data in a standard format (CSV / JSON).',
         'Verify the exported file contains all relevant user data fields.',
@@ -142,7 +142,7 @@ const PRIVACY_CHECKS = [
 
 // Security patterns
 const SECURITY_CHECKS = [
-    { id: 'authn',           label: 'Authentication tests (login, logout, MFA)',              keywords: ['login', 'logout', 'sign in', 'sign out', 'authentication', 'mfa', '2fa', 'otp', 'sso', 'token', 'session'],
+    { id: 'authn',           label: 'Authentication tests (login, logout, MFA)',              severity: 'showstopper',  keywords: ['login', 'logout', 'sign in', 'sign out', 'authentication', 'mfa', '2fa', 'otp', 'sso', 'token', 'session'],
       scenarios: [
         'Verify a user cannot access protected pages without being logged in.',
         'Verify the session is fully invalidated on logout.',
@@ -150,7 +150,7 @@ const SECURITY_CHECKS = [
         'Verify login fails with incorrect credentials and shows a generic error.',
         'Verify SSO / third-party login flow completes correctly and creates a session.',
       ]},
-    { id: 'authz',           label: 'Authorization / role-based access tests',                keywords: ['authorization', 'role', 'permission', 'access denied', 'forbidden', 'privilege', 'rbac', 'admin only', 'unauthorized'],
+    { id: 'authz',           label: 'Authorization / role-based access tests',                severity: 'showstopper',  keywords: ['authorization', 'role', 'permission', 'access denied', 'forbidden', 'privilege', 'rbac', 'admin only', 'unauthorized'],
       scenarios: [
         'Verify non-admin users cannot access admin-only pages (expect 403 / redirect).',
         'Verify RBAC permissions are enforced on all API endpoints.',
@@ -158,56 +158,56 @@ const SECURITY_CHECKS = [
         'Verify privilege escalation attempts are rejected.',
         'Verify "Access Denied" messages do not leak sensitive system information.',
       ]},
-    { id: 'injection',       label: 'Injection attack tests (SQL, command, LDAP)',            keywords: ['sql injection', 'injection', 'command injection', 'ldap', 'nosql injection', 'xpath', 'special characters'],
+    { id: 'injection',       label: 'Injection attack tests (SQL, command, LDAP)',            severity: 'critical',     keywords: ['sql injection', 'injection', 'command injection', 'ldap', 'nosql injection', 'xpath', 'special characters'],
       scenarios: [
         'Verify SQL injection payloads (e.g. \' OR 1=1 --) in input fields are sanitized.',
         'Verify command injection characters (;, |, &&) are rejected or escaped.',
         'Verify NoSQL injection attempts do not return unintended data.',
         'Verify parameterized queries / prepared statements are used for DB interactions.',
       ]},
-    { id: 'xss',             label: 'Cross-site scripting (XSS) tests',                       keywords: ['xss', 'cross-site scripting', 'script injection', '<script', 'alert(', 'javascript:'],
+    { id: 'xss',             label: 'Cross-site scripting (XSS) tests',                       severity: 'critical',     keywords: ['xss', 'cross-site scripting', 'script injection', '<script', 'alert(', 'javascript:'],
       scenarios: [
         'Verify user-supplied content containing <script> tags is escaped before rendering.',
         'Verify javascript: URIs in href/src attributes are blocked.',
         'Verify stored XSS payloads in user profiles / comments are not executed.',
         'Verify DOM-based XSS via URL parameters is prevented.',
       ]},
-    { id: 'csrf',            label: 'CSRF protection tests',                                  keywords: ['csrf', 'cross-site request forgery', 'anti-csrf', 'csrf token', 'samesite'],
+    { id: 'csrf',            label: 'CSRF protection tests',                                  severity: 'critical',     keywords: ['csrf', 'cross-site request forgery', 'anti-csrf', 'csrf token', 'samesite'],
       scenarios: [
         'Verify all state-changing requests (POST/PUT/DELETE) include a valid CSRF token.',
         'Verify requests without a valid CSRF token are rejected with 403.',
         'Verify SameSite cookie attribute is set to Strict or Lax.',
         'Verify CSRF tokens are unique per session and not reused.',
       ]},
-    { id: 'session-mgmt',    label: 'Session management tests (expiry, fixation)',            keywords: ['session expir', 'session timeout', 'session fixation', 'cookie secure', 'httponly', 'session hijack'],
+    { id: 'session-mgmt',    label: 'Session management tests (expiry, fixation)',            severity: 'critical',     keywords: ['session expir', 'session timeout', 'session fixation', 'cookie secure', 'httponly', 'session hijack'],
       scenarios: [
         'Verify the session automatically expires after the configured idle timeout.',
         'Verify a new session token is issued on login (prevents session fixation).',
         'Verify session cookies have HttpOnly and Secure flags set.',
         'Verify the old session token is invalid after logout.',
       ]},
-    { id: 'input-validation',label: 'Input validation & sanitization tests',                  keywords: ['sanitiz', 'whitelist', 'blacklist', 'input length', 'special char', 'html escap', 'encode', 'valid input'],
+    { id: 'input-validation',label: 'Input validation & sanitization tests',                  severity: 'major',        keywords: ['sanitiz', 'whitelist', 'blacklist', 'input length', 'special char', 'html escap', 'encode', 'valid input'],
       scenarios: [
         'Verify all input fields enforce maximum length limits on both client and server.',
         'Verify special characters are HTML-encoded before being reflected in responses.',
         'Verify path traversal patterns (../) in filename inputs are rejected.',
         'Verify server-side validation rejects payloads that pass client-side checks.',
       ]},
-    { id: 'encryption',      label: 'Encryption / data-at-rest and in-transit tests',         keywords: ['encrypt', 'decrypt', 'https', 'tls', 'ssl', 'at rest', 'in transit', 'hash', 'password storage'],
+    { id: 'encryption',      label: 'Encryption / data-at-rest and in-transit tests',         severity: 'critical',     keywords: ['encrypt', 'decrypt', 'https', 'tls', 'ssl', 'at rest', 'in transit', 'hash', 'password storage'],
       scenarios: [
         'Verify all pages and API calls are served over HTTPS (no mixed content).',
         'Verify passwords are stored as salted hashes (never plaintext).',
         'Verify sensitive data fields in the database are encrypted at rest.',
         'Verify TLS certificate is valid and not expired.',
       ]},
-    { id: 'rate-limiting',   label: 'Rate limiting / brute-force protection tests',           keywords: ['rate limit', 'brute force', 'lockout', 'throttle', 'too many attempts', 'captcha'],
+    { id: 'rate-limiting',   label: 'Rate limiting / brute-force protection tests',           severity: 'major',        keywords: ['rate limit', 'brute force', 'lockout', 'throttle', 'too many attempts', 'captcha'],
       scenarios: [
         'Verify the account is locked / throttled after N consecutive failed login attempts.',
         'Verify API endpoints return HTTP 429 when the rate limit is exceeded.',
         'Verify CAPTCHA is triggered after repeated failed authentication attempts.',
         'Verify IP-based rate limiting is applied to sensitive endpoints.',
       ]},
-    { id: 'file-upload-sec', label: 'File upload security tests',                             keywords: ['file upload', 'malicious file', 'file type', 'antivirus', 'file size limit', 'mime type'],
+    { id: 'file-upload-sec', label: 'File upload security tests',                             severity: 'major',        keywords: ['file upload', 'malicious file', 'file type', 'antivirus', 'file size limit', 'mime type'],
       scenarios: [
         'Verify only explicitly allowed file types (whitelist) can be uploaded.',
         'Verify files exceeding the size limit are rejected with a clear error.',
@@ -266,7 +266,7 @@ function detectFeatureColumn(headers) {
 function runChecks(checks, allRowTexts) {
     return checks.map(check => {
         const covered = allRowTexts.some(t => anyKeyword(t, check.keywords));
-        return { id: check.id, label: check.label, covered, scenarios: check.scenarios || [] };
+        return { id: check.id, label: check.label, covered, severity: check.severity || 'minor', scenarios: check.scenarios || [] };
     });
 }
 
@@ -492,9 +492,9 @@ function analyzeTestCases(rows) {
     function renderResults(r) {
         renderSummary(r);
         renderFeatures(r);
-        renderGapSection(secFunctional, 'Functional Test Gaps', r.functional);
-        renderGapSection(secPrivacy,    'Privacy Test Gaps',    r.privacy);
-        renderGapSection(secSecurity,   'Security Test Gaps',   r.security);
+        renderGapSection(secFunctional, 'Functional Test Gaps', r.functional, r.features);
+        renderGapSection(secPrivacy,    'Privacy Test Gaps',    r.privacy,    r.features);
+        renderGapSection(secSecurity,   'Security Test Gaps',   r.security,   r.features);
         renderTable(r);
     }
 
@@ -529,18 +529,38 @@ function analyzeTestCases(rows) {
         secFeatures.classList.add('visible');
     }
 
-    function renderGapSection(sectionEl, title, checks) {
+    function renderGapSection(sectionEl, title, checks, features) {
         const h2 = sectionEl.querySelector('h2');
         h2.textContent = title;
 
         const body = sectionEl.querySelector('.gap-body');
         body.innerHTML = '';
 
+        // Feature summary
+        if (features && features.length) {
+            const featSummary = document.createElement('div');
+            featSummary.className = 'gap-feature-summary';
+            const label = document.createElement('span');
+            label.className = 'gap-feature-summary-label';
+            label.textContent = 'Features / Modules in scope:';
+            featSummary.appendChild(label);
+            const tags = document.createElement('div');
+            tags.className = 'feature-tags';
+            features.forEach(f => {
+                const span = document.createElement('span');
+                span.className = 'feature-tag';
+                span.textContent = f;
+                tags.appendChild(span);
+            });
+            featSummary.appendChild(tags);
+            body.appendChild(featSummary);
+        }
+
         const missing = checks.filter(c => !c.covered);
         const covered = checks.filter(c =>  c.covered);
 
         if (!missing.length) {
-            body.innerHTML = '<div class="no-gaps-banner">✅ No obvious gaps detected in this category.</div>';
+            body.insertAdjacentHTML('beforeend', '<div class="no-gaps-banner">✅ No obvious gaps detected in this category.</div>');
             sectionEl.classList.add('visible');
             return;
         }
@@ -557,7 +577,7 @@ function analyzeTestCases(rows) {
             li.setAttribute('role', 'button');
             li.setAttribute('aria-expanded', 'false');
             li.setAttribute('tabindex', '0');
-            li.innerHTML = `<span class="icon-mark">❌</span><span class="gap-label">${escapeHtml(c.label)}</span><span class="expand-arrow" aria-hidden="true">▶</span>`;
+            li.innerHTML = `<span class="icon-mark">❌</span><span class="gap-label">${escapeHtml(c.label)}</span><span class="severity-badge severity-${escapeHtml(c.severity)}">${escapeHtml(c.severity)}</span><span class="expand-arrow" aria-hidden="true">▶</span>`;
 
             if (c.scenarios && c.scenarios.length) {
                 const panel = document.createElement('div');
