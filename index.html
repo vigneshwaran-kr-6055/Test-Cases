@@ -3,64 +3,170 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SDLC Dashboard</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Test Case Assist</title>
+    <link rel="stylesheet" href="main.css">
+    <!-- read-excel-file for XLSX parsing used by the generator tab -->
+    <script src="read-excel-file.min.js"></script>
 </head>
 <body>
-    <header>
-        <h1>SDLC Dashboard</h1>
-    </header>
-    <nav>
-        <ul>
-            <li><a href="#workboard">WorkBoard</a></li>
-            <li><a href="#windows">Windows</a></li>
-            <li><a href="#mac">Mac</a></li>
-            <li><a href="#pm-tasks">PM Tasks</a></li>
-            <li><a href="#ui-tasks">UI Tasks</a></li>
-            <li><a href="#internal-feedbacks">Internal Feedbacks</a></li>
-            <li><a href="#user-education">User Education</a></li>
-            <li><a href="test-case-analyzer.html">🔍 Test Case Analyser</a></li>
-        </ul>
-    </nav>
-    <main>
-        <section id="workboard">
-            <h2>WorkBoard</h2>
-            <p>Details for WorkBoard module.</p>
-        </section>
-        <section id="windows">
-            <h2>Windows Platform</h2>
-            <p>Details for Windows platform.</p>
-        </section>
-        <section id="mac">
-            <h2>Mac Platform</h2>
-            <p>Details for Mac platform.</p>
-        </section>
-        <section id="pm-tasks">
-            <h2>PM Tasks</h2>
-            <p>Details for PM Tasks module.</p>
-        </section>
-        <section id="ui-tasks">
-            <h2>UI Tasks</h2>
-            <p>Details for UI Tasks module.</p>
-        </section>
-        <section id="internal-feedbacks">
-            <h2>Internal Feedbacks</h2>
-            <p>Details for Internal Feedbacks module.</p>
-        </section>
-        <section id="user-education">
-            <h2>User Education</h2>
-            <p>Details for User Education module.</p>
-        </section>
-        <section id="test-case-analyser">
-            <h2>🔍 Test Case Gap Analyser</h2>
-            <p>Upload an <strong>.xlsx</strong> / <strong>.csv</strong> file of test cases.
-               The tool reads every test case, understands the feature flow, and automatically identifies
-               missing <em>functional</em>, <em>privacy</em>, and <em>security</em> test cases.</p>
-            <a href="test-case-analyzer.html" style="display:inline-block;margin-top:12px;padding:10px 24px;background:#1a73e8;color:#fff;border-radius:6px;text-decoration:none;font-weight:600;">Open Analyser →</a>
-        </section>
-    </main>
-    <footer>
-        <p>&copy; 2026 SDLC Dashboard</p>
-    </footer>
+
+<header>
+    <span class="logo">🧪</span>
+    <h1>Test Case Assist</h1>
+</header>
+
+<!-- Tab navigation -->
+<nav class="tab-nav" role="tablist" aria-label="Main sections">
+    <button class="tab-btn active"
+            role="tab"
+            aria-selected="true"
+            aria-controls="tab-review"
+            id="btn-tab-review">
+        🔍 Test Case Review
+    </button>
+    <button class="tab-btn"
+            role="tab"
+            aria-selected="false"
+            aria-controls="tab-generator"
+            id="btn-tab-generator">
+        ⚡ Test Case Generator
+    </button>
+</nav>
+
+<!-- ── Tab 1: Test Case Review (embeds existing analyser) ── -->
+<div id="tab-review" class="tab-pane active" role="tabpanel" aria-labelledby="btn-tab-review">
+    <iframe src="test-case-analyzer.html"
+            title="Test Case Review — Gap Analyser"
+            id="review-frame"
+            loading="lazy">
+    </iframe>
+</div>
+
+<!-- ── Tab 2: Test Case Generator ── -->
+<div id="tab-generator" class="tab-pane" role="tabpanel" aria-labelledby="btn-tab-generator">
+    <div class="gen-wrap">
+
+        <!-- Upload Card -->
+        <div class="upload-card">
+            <h2>Generate Test Cases from Use Cases</h2>
+            <p>Upload a <strong>.txt</strong>, <strong>.csv</strong>, or <strong>.xlsx</strong> file
+               containing your use cases or user stories. The tool reads each use case and
+               automatically generates structured test cases tagged with
+               <em>severity</em> (showstopper, critical, major, minor) and
+               <em>type</em> (functional, non-functional, UI, privacy, security).</p>
+
+            <div class="drop-zone" id="gen-drop-zone">
+                <input type="file"
+                       id="gen-file-input"
+                       accept=".txt,.csv,.xlsx"
+                       aria-label="Upload use case file">
+                <span class="icon">📂</span>
+                <div class="label" id="gen-drop-label">Drag &amp; drop your file here, or click to browse</div>
+                <div class="hint"  id="gen-drop-hint">.txt · .csv · .xlsx</div>
+            </div>
+
+            <button class="btn-generate" id="btn-generate" disabled>Generate Test Cases</button>
+        </div>
+
+        <!-- Status bar -->
+        <div id="gen-status" role="status" aria-live="polite"></div>
+
+        <!-- Summary -->
+        <div class="section-card" id="gen-sec-summary">
+            <h2>📊 Summary</h2>
+            <p style="font-size:.9rem;color:#555;margin-bottom:14px;font-weight:600;">By Severity</p>
+            <div class="stats-row" style="margin-bottom:20px;">
+                <div class="stat-chip">
+                    <div class="num" id="gen-stat-total">0</div>
+                    <div class="lbl">Total test cases</div>
+                </div>
+                <div class="stat-chip" style="border-top:3px solid #3d0000;">
+                    <div class="num" id="gen-stat-showstopper" style="color:#3d0000;">0</div>
+                    <div class="lbl">Showstopper</div>
+                </div>
+                <div class="stat-chip" style="border-top:3px solid #b71c1c;">
+                    <div class="num" id="gen-stat-critical" style="color:#b71c1c;">0</div>
+                    <div class="lbl">Critical</div>
+                </div>
+                <div class="stat-chip" style="border-top:3px solid #e65100;">
+                    <div class="num" id="gen-stat-major" style="color:#e65100;">0</div>
+                    <div class="lbl">Major</div>
+                </div>
+                <div class="stat-chip" style="border-top:3px solid #f9a825;">
+                    <div class="num" id="gen-stat-minor" style="color:#f9a825;">0</div>
+                    <div class="lbl">Minor</div>
+                </div>
+            </div>
+
+            <p style="font-size:.9rem;color:#555;margin-bottom:14px;font-weight:600;">By Type</p>
+            <div class="stats-row">
+                <div class="stat-chip" style="border-top:3px solid #1a73e8;">
+                    <div class="num" id="gen-stat-functional" style="color:#1a73e8;">0</div>
+                    <div class="lbl">Functional</div>
+                </div>
+                <div class="stat-chip" style="border-top:3px solid #2e7d32;">
+                    <div class="num" id="gen-stat-nonfunctional" style="color:#2e7d32;">0</div>
+                    <div class="lbl">Non-functional</div>
+                </div>
+                <div class="stat-chip" style="border-top:3px solid #6a1b9a;">
+                    <div class="num" id="gen-stat-ui" style="color:#6a1b9a;">0</div>
+                    <div class="lbl">UI</div>
+                </div>
+                <div class="stat-chip" style="border-top:3px solid #e65100;">
+                    <div class="num" id="gen-stat-privacy" style="color:#e65100;">0</div>
+                    <div class="lbl">Privacy</div>
+                </div>
+                <div class="stat-chip" style="border-top:3px solid #c62828;">
+                    <div class="num" id="gen-stat-security" style="color:#c62828;">0</div>
+                    <div class="lbl">Security</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Table -->
+        <div class="section-card" id="gen-sec-table">
+            <h2>
+                📋 Generated Test Cases
+                <button class="btn-export" id="btn-export-csv">⬇ Export CSV</button>
+            </h2>
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>TC ID</th>
+                            <th>Use Case Ref</th>
+                            <th>Title</th>
+                            <th>Description</th>
+                            <th>Severity</th>
+                            <th>Type</th>
+                        </tr>
+                    </thead>
+                    <tbody id="gen-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+
+    </div><!-- /.gen-wrap -->
+</div><!-- /#tab-generator -->
+
+<script src="test-case-generator.js"></script>
+<script>
+    /* ── Tab switching ── */
+    (function () {
+        const btns  = document.querySelectorAll('.tab-btn');
+        const panes = document.querySelectorAll('.tab-pane');
+
+        btns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                btns.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+                panes.forEach(p => p.classList.remove('active'));
+                btn.classList.add('active');
+                btn.setAttribute('aria-selected', 'true');
+                document.getElementById(btn.getAttribute('aria-controls')).classList.add('active');
+            });
+        });
+    })();
+</script>
+
 </body>
 </html>
