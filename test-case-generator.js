@@ -773,9 +773,9 @@ async function extractPdfText(arrayBuffer) {
         tcs.forEach(tc => {
             const tr = document.createElement('tr');
 
-            // Description: bulleted list
+            // Precondition: plain text
             const descHtml = Array.isArray(tc.description)
-                ? `<ul class="tc-list">${tc.description.map(d => `<li>${esc(d)}</li>`).join('')}</ul>`
+                ? tc.description.map(d => esc(d)).join(' ')
                 : esc(tc.description);
 
             // Steps: numbered list
@@ -806,7 +806,7 @@ async function extractPdfText(arrayBuffer) {
     if (btnExport) {
         btnExport.addEventListener('click', () => {
             if (!generatedTCs || !generatedTCs.length) return;
-            const header = ['TC ID', 'Use Case Ref', 'Title', 'Description', 'Steps', 'Expected Result', 'Severity', 'Type'];
+            const header = ['Test Case ID', 'Use Case Ref', 'Test Case', 'Precondition', 'Steps', 'Expected Results', 'Severity', 'Type'];
             const rows   = generatedTCs.map(tc => [
                 tc.id,
                 tc.ucRef,
