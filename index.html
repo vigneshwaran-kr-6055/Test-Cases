@@ -19,35 +19,23 @@
     <h1>Test Case Assist</h1>
 </header>
 
-<!-- Tab navigation -->
-<nav class="tab-nav" role="tablist" aria-label="Main sections">
-    <button class="tab-btn active"
-            role="tab"
-            aria-selected="true"
-            aria-controls="tab-review"
-            id="btn-tab-review">
-        🔍 Test Case Review
-    </button>
-    <button class="tab-btn"
-            role="tab"
-            aria-selected="false"
-            aria-controls="tab-generator"
-            id="btn-tab-generator">
-        ⚡ Test Case Generator
-    </button>
-</nav>
-
-<!-- ── Tab 1: Test Case Review (embeds existing analyser) ── -->
-<div id="tab-review" class="tab-pane active" role="tabpanel" aria-labelledby="btn-tab-review">
+<!-- ── Section 1: Test Case Gap Analyser ── -->
+<div class="section-heading">
+    <h2>🔍 Test Case Gap Analyser</h2>
+</div>
+<div id="section-review">
     <iframe src="test-case-analyzer.html"
-            title="Test Case Review — Gap Analyser"
+            title="Test Case Gap Analyser"
             id="review-frame"
             loading="lazy">
     </iframe>
 </div>
 
-<!-- ── Tab 2: Test Case Generator ── -->
-<div id="tab-generator" class="tab-pane" role="tabpanel" aria-labelledby="btn-tab-generator">
+<!-- ── Section 2: Test Case Generator ── -->
+<div class="section-heading">
+    <h2>⚡ Test Case Generator</h2>
+</div>
+<div id="section-generator">
     <div class="gen-wrap">
 
         <!-- Upload Card -->
@@ -154,26 +142,9 @@
         </div>
 
     </div><!-- /.gen-wrap -->
-</div><!-- /#tab-generator -->
+</div><!-- /#section-generator -->
 
 <script src="test-case-generator.js"></script>
-<script>
-    /* ── Tab switching ── */
-    (function () {
-        const btns  = document.querySelectorAll('.tab-btn');
-        const panes = document.querySelectorAll('.tab-pane');
-
-        btns.forEach(btn => {
-            btn.addEventListener('click', () => {
-                btns.forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
-                panes.forEach(p => p.classList.remove('active'));
-                btn.classList.add('active');
-                btn.setAttribute('aria-selected', 'true');
-                document.getElementById(btn.getAttribute('aria-controls')).classList.add('active');
-            });
-        });
-    })();
-</script>
 
 </body>
 </html>
