@@ -19,23 +19,23 @@
     <h1>Test Case Assist</h1>
 </header>
 
-<!-- ── Section 1: Test Case Gap Analyser ── -->
-<div class="section-heading">
-    <h2>🔍 Test Case Gap Analyser</h2>
-</div>
-<div id="section-review">
+<!-- ── Tab Navigation ── -->
+<nav class="tab-nav" role="tablist">
+    <button class="tab-btn active" id="tab-reviewer" role="tab" aria-selected="true" aria-controls="section-review">🔍 Test Case Reviewer</button>
+    <button class="tab-btn"        id="tab-generator" role="tab" aria-selected="false" aria-controls="section-generator">⚡ Test Case Generator</button>
+</nav>
+
+<!-- ── Section 1: Test Case Reviewer ── -->
+<div id="section-review" role="tabpanel" aria-labelledby="tab-reviewer">
     <iframe src="test-case-analyzer.html"
-            title="Test Case Gap Analyser"
+            title="Test Case Reviewer"
             id="review-frame"
             loading="lazy">
     </iframe>
 </div>
 
 <!-- ── Section 2: Test Case Generator ── -->
-<div class="section-heading">
-    <h2>⚡ Test Case Generator</h2>
-</div>
-<div id="section-generator">
+<div id="section-generator" role="tabpanel" aria-labelledby="tab-generator" hidden>
     <div class="gen-wrap">
 
         <!-- Upload Card -->
@@ -145,6 +145,23 @@
 </div><!-- /#section-generator -->
 
 <script src="test-case-generator.js"></script>
+<script>
+(function () {
+    const tabs = document.querySelectorAll('.tab-btn');
+    tabs.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            tabs.forEach(function (t) {
+                t.classList.remove('active');
+                t.setAttribute('aria-selected', 'false');
+                document.getElementById(t.getAttribute('aria-controls')).hidden = true;
+            });
+            btn.classList.add('active');
+            btn.setAttribute('aria-selected', 'true');
+            document.getElementById(btn.getAttribute('aria-controls')).hidden = false;
+        });
+    });
+}());
+</script>
 
 </body>
 </html>
