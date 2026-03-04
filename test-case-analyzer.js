@@ -295,6 +295,80 @@ function extractFeatures(rows, featureCol) {
 }
 
 /* ─────────────────────────────────────────────
+   Feature summary generation
+───────────────────────────────────────────── */
+
+function escapeHtml(str) {
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+
+/**
+ * Generate a brief human-readable paragraph summarising what the
+ * uploaded test suite is testing, based on the test-case titles.
+ */
+function generateFeatureSummary(testCaseTexts, features) {
+    const allText = testCaseTexts.join(' ').toLowerCase();
+
+    // Broad feature-domain detection
+    const domains = [
+        { name: 'authentication',        keywords: ['login', 'logout', 'sign in', 'sign out', 'register', 'password', 'mfa', '2fa', 'otp', 'sso', 'session'] },
+        { name: 'user profile / account', keywords: ['profile', 'account', 'avatar', 'personal info', 'bio', 'user settings', 'preferences'] },
+        { name: 'payment / checkout',    keywords: ['payment', 'checkout', 'cart', 'order', 'purchase', 'billing', 'invoice', 'refund', 'transaction'] },
+        { name: 'search & filtering',    keywords: ['search', 'filter', 'sort', 'query', 'find', 'results'] },
+        { name: 'file upload',           keywords: ['upload', 'file', 'attachment', 'import', 'document'] },
+        { name: 'notifications',         keywords: ['notification', 'alert', 'email', 'sms', 'push', 'reminder'] },
+        { name: 'reporting / dashboard', keywords: ['report', 'dashboard', 'analytics', 'chart', 'graph', 'export', 'metric'] },
+        { name: 'administration',        keywords: ['admin', 'role', 'permission', 'user management', 'access control', 'rbac'] },
+        { name: 'API / integrations',    keywords: ['api', 'integration', 'webhook', 'endpoint', 'request', 'response', 'third-party'] },
+        { name: 'data management',       keywords: ['create', 'edit', 'delete', 'update', 'save', 'list', 'view', 'record'] },
+    ];
+
+    const matchedDomains = domains
+        .map(d => ({ name: d.name, count: d.keywords.filter(kw => allText.includes(kw)).length }))
+        .filter(d => d.count > 0)
+        .sort((a, b) => b.count - a.count);
+
+    // Action/operation types present in the test cases
+    const actionTypes = [];
+    if (/\b(create|add|new|register|submit)\b/.test(allText)) actionTypes.push('creation');
+    if (/\b(edit|update|modify|change|save)\b/.test(allText))   actionTypes.push('editing');
+    if (/\b(delete|remove|archive|clear)\b/.test(allText))      actionTypes.push('deletion');
+    if (/\b(search|filter|find|query)\b/.test(allText))         actionTypes.push('search & filtering');
+    if (/\b(login|sign in|authenticate|logout)\b/.test(allText)) actionTypes.push('authentication');
+    if (/\b(permission|role|access|authoriz)\b/.test(allText))  actionTypes.push('access control');
+    if (/\b(valid|invalid|error|boundary|negative)\b/.test(allText)) actionTypes.push('input validation');
+
+    // Build the summary paragraph
+    let summary = '';
+
+    if (features && features.length > 0) {
+        const listed = features.slice(0, 5).join(', ');
+        summary += `This test suite covers the <strong>${escapeHtml(listed)}</strong> feature area${features.slice(0, 5).length > 1 ? 's' : ''}. `;
+    } else if (matchedDomains.length > 0) {
+        const topNames = matchedDomains.slice(0, 3).map(d => d.name).join(', ');
+        summary += `This test suite focuses on <strong>${escapeHtml(topNames)}</strong>. `;
+    } else {
+        summary += 'This test suite covers a general application feature. ';
+    }
+
+    if (actionTypes.length > 0) {
+        summary += `The test cases exercise <strong>${escapeHtml(actionTypes.join(', '))}</strong> scenarios`;
+        if (matchedDomains.length > 0) {
+            summary += ` within the detected feature area${matchedDomains.length > 1 ? 's' : ''}`;
+        }
+        summary += '. ';
+    }
+
+    summary += `A total of <strong>${testCaseTexts.length}</strong> test case${testCaseTexts.length !== 1 ? 's were' : ' was'} read and analysed for coverage gaps.`;
+
+    return summary;
+}
+
+/* ─────────────────────────────────────────────
    Main analysis entry-point
 ───────────────────────────────────────────── */
 
@@ -310,13 +384,15 @@ function analyzeTestCases(rows) {
     const headers    = Object.keys(rows[0]);
     const titleCol   = detectTitleColumn(headers);
     const featureCol = detectFeatureColumn(headers);
-    const allTexts   = rows.map(rowText);
+    // Only use the test-case title/description column for gap analysis
+    const allTexts   = rows.map(r => String(r[titleCol] ?? '').toLowerCase());
 
     const functionalResults = runChecks(FUNCTIONAL_CHECKS, allTexts);
     const privacyResults    = runChecks(PRIVACY_CHECKS,    allTexts);
     const securityResults   = runChecks(SECURITY_CHECKS,   allTexts);
 
     const features = extractFeatures(rows, featureCol);
+    const featureSummary = generateFeatureSummary(allTexts, features);
 
     return {
         totalRows:   rows.length,
@@ -328,6 +404,7 @@ function analyzeTestCases(rows) {
         privacy:     privacyResults,
         security:    securityResults,
         rows,
+        featureSummary,
     };
 }
 
@@ -341,8 +418,9 @@ function analyzeTestCases(rows) {
     const btnAnalyze = document.getElementById('btn-analyze');
     const statusBar  = document.getElementById('status-bar');
 
-    const secSummary    = document.getElementById('sec-summary');
-    const secFeatures   = document.getElementById('sec-features');
+    const secSummary        = document.getElementById('sec-summary');
+    const secFeatureSummary = document.getElementById('sec-feature-summary');
+    const secFeatures       = document.getElementById('sec-features');
     const secFunctional = document.getElementById('sec-functional');
     const secPrivacy    = document.getElementById('sec-privacy');
     const secSecurity   = document.getElementById('sec-security');
@@ -358,7 +436,7 @@ function analyzeTestCases(rows) {
     }
 
     function clearResults() {
-        [secSummary, secFeatures, secFunctional, secPrivacy, secSecurity, secTable]
+        [secSummary, secFeatureSummary, secFeatures, secFunctional, secPrivacy, secSecurity, secTable]
             .forEach(s => s.classList.remove('visible'));
     }
 
@@ -491,11 +569,18 @@ function analyzeTestCases(rows) {
     /* ── Render helpers ── */
     function renderResults(r) {
         renderSummary(r);
+        renderFeatureSummary(r);
         renderFeatures(r);
         renderGapSection(secFunctional, 'Functional Test Gaps', r.functional, r.features);
         renderGapSection(secPrivacy,    'Privacy Test Gaps',    r.privacy,    r.features);
         renderGapSection(secSecurity,   'Security Test Gaps',   r.security,   r.features);
         renderTable(r);
+    }
+
+    function renderFeatureSummary(r) {
+        const container = document.getElementById('feature-summary-content');
+        container.innerHTML = r.featureSummary;
+        secFeatureSummary.classList.add('visible');
     }
 
     function renderSummary(r) {
@@ -668,11 +753,4 @@ function analyzeTestCases(rows) {
         secTable.classList.add('visible');
     }
 
-    function escapeHtml(str) {
-        return str
-            .replace(/&/g, '&amp;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/"/g, '&quot;');
-    }
 })();

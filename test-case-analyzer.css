@@ -289,6 +289,17 @@ tbody tr:last-child td { border-bottom: none; }
     white-space: nowrap;
 }
 
+/* ===== Feature Summary ===== */
+.feature-summary-text {
+    font-size: 0.95rem;
+    line-height: 1.75;
+    color: #333;
+    background: #f8f9ff;
+    border-left: 4px solid #1a73e8;
+    padding: 14px 18px;
+    border-radius: 0 8px 8px 0;
+}
+
 /* ===== No-gaps Banner ===== */
 .no-gaps-banner {
     text-align: center;
