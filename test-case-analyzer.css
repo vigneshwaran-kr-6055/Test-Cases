@@ -255,6 +255,40 @@ tbody td {
 }
 tbody tr:last-child td { border-bottom: none; }
 
+/* ===== Severity Badges ===== */
+.severity-badge {
+    display: inline-block;
+    border-radius: 12px;
+    padding: 2px 10px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: capitalize;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+}
+.severity-showstopper { background: #3d0000; color: #fff; }
+.severity-critical    { background: #b71c1c; color: #fff; }
+.severity-major       { background: #e65100; color: #fff; }
+.severity-minor       { background: #f9a825; color: #333; }
+
+/* ===== Gap Feature Summary ===== */
+.gap-feature-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    background: #f0f2f5;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 20px;
+}
+.gap-feature-summary-label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #555;
+    white-space: nowrap;
+}
+
 /* ===== No-gaps Banner ===== */
 .no-gaps-banner {
     text-align: center;
