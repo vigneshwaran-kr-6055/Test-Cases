@@ -7,6 +7,10 @@
     <link rel="stylesheet" href="main.css">
     <!-- read-excel-file for XLSX parsing used by the generator tab -->
     <script src="read-excel-file.min.js"></script>
+    <!-- JSZip for DOCX parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+    <!-- PDF.js for PDF parsing (legacy UMD build) -->
+    <script src="https://unpkg.com/pdfjs-dist@4.9.155/legacy/build/pdf.min.js"></script>
 </head>
 <body>
 
@@ -49,7 +53,8 @@
         <!-- Upload Card -->
         <div class="upload-card">
             <h2>Generate Test Cases from Use Cases</h2>
-            <p>Upload a <strong>.txt</strong>, <strong>.csv</strong>, or <strong>.xlsx</strong> file
+            <p>Upload a <strong>.txt</strong>, <strong>.csv</strong>, <strong>.xlsx</strong>,
+               <strong>.docx</strong>, or <strong>.pdf</strong> file
                containing your use cases or user stories. The tool reads each use case and
                automatically generates structured test cases tagged with
                <em>severity</em> (showstopper, critical, major, minor) and
@@ -58,11 +63,11 @@
             <div class="drop-zone" id="gen-drop-zone">
                 <input type="file"
                        id="gen-file-input"
-                       accept=".txt,.csv,.xlsx"
+                       accept=".txt,.csv,.xlsx,.docx,.doc,.pdf"
                        aria-label="Upload use case file">
                 <span class="icon">📂</span>
                 <div class="label" id="gen-drop-label">Drag &amp; drop your file here, or click to browse</div>
-                <div class="hint"  id="gen-drop-hint">.txt · .csv · .xlsx</div>
+                <div class="hint"  id="gen-drop-hint">.txt · .csv · .xlsx · .docx · .pdf</div>
             </div>
 
             <button class="btn-generate" id="btn-generate" disabled>Generate Test Cases</button>
@@ -137,6 +142,8 @@
                             <th>Use Case Ref</th>
                             <th>Title</th>
                             <th>Description</th>
+                            <th>Steps</th>
+                            <th>Expected Result</th>
                             <th>Severity</th>
                             <th>Type</th>
                         </tr>

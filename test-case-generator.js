@@ -1,9 +1,9 @@
 /**
  * test-case-generator.js
- * Reads uploaded use-case documents (TXT, CSV, XLSX) and generates
+ * Reads uploaded use-case documents (TXT, CSV, XLSX, DOCX, PDF) and generates
  * structured test cases with severity and test-case-type tags.
  *
- * Depends on read-excel-file (v7) already loaded by the host page.
+ * Depends on read-excel-file (v7), JSZip, and PDF.js already loaded by the host page.
  */
 
 'use strict';
@@ -101,7 +101,7 @@ const BOUNDARY_RE = /\b(limit|max|min|maximum|minimum|length|count|number|charac
  * use-case text.  Templates with a `condition` only fire when the
  * condition returns true.
  *
- * @typedef {{ ucRef:string, title:string, description:string, severity:string, type:string }} TC
+ * @typedef {{ ucRef:string, title:string, description:string[], steps:string[], expectedResult:string, severity:string, type:string }} TC
  */
 const TEMPLATES = [
     // 1. Happy / positive path — always generated
@@ -111,7 +111,19 @@ const TEMPLATES = [
             return [{
                 ucRef,
                 title: `Verify successful ${feature} with valid inputs`,
-                description: `Ensure the ${feature} completes successfully when all required inputs are valid and the user has the appropriate permissions.`,
+                description: [
+                    `Verify that the ${feature} completes successfully end-to-end.`,
+                    'All required input fields are filled with valid data.',
+                    'The user has the appropriate permissions to perform the action.',
+                ],
+                steps: [
+                    'Log in with a valid user account that has the required permissions.',
+                    `Navigate to the ${feature} screen/functionality.`,
+                    'Fill in all required fields with valid, correctly formatted data.',
+                    'Submit or confirm the action.',
+                    'Observe the system response.',
+                ],
+                expectedResult: `The ${feature} completes successfully and the system confirms the action with an appropriate success message or state change.`,
                 severity: detectSeverity(ucText),
                 type: 'functional',
             }];
@@ -125,7 +137,18 @@ const TEMPLATES = [
             return [{
                 ucRef,
                 title: `Verify error handling for invalid inputs in ${feature}`,
-                description: `Ensure the system displays a clear error message and does not proceed when invalid, missing, or malformed inputs are provided for ${feature}.`,
+                description: [
+                    `Ensure the system handles invalid or missing inputs gracefully for ${feature}.`,
+                    'The system must not proceed or corrupt data on bad input.',
+                    'A clear, user-friendly error message must be displayed.',
+                ],
+                steps: [
+                    'Navigate to the relevant screen for the feature.',
+                    'Leave required fields empty or enter invalid/malformed data.',
+                    'Attempt to submit or perform the action.',
+                    'Observe the system response and any displayed messages.',
+                ],
+                expectedResult: `The system displays a clear, descriptive error message, highlights the problematic field(s), and does not process or save any data.`,
                 severity: 'major',
                 type: 'functional',
             }];
@@ -140,7 +163,20 @@ const TEMPLATES = [
             return [{
                 ucRef,
                 title: `Verify boundary values for ${feature}`,
-                description: `Test the ${feature} at the minimum, maximum, and just-beyond-maximum allowed values to ensure correct acceptance and rejection behaviour.`,
+                description: [
+                    `Validate correct behaviour at the defined limits for ${feature}.`,
+                    'Test at exactly the minimum allowed value.',
+                    'Test at exactly the maximum allowed value.',
+                    'Test with a value just beyond the maximum.',
+                ],
+                steps: [
+                    'Identify the minimum and maximum allowed values for the relevant field(s).',
+                    'Enter the minimum valid value and submit — note the result.',
+                    'Enter the maximum valid value and submit — note the result.',
+                    'Enter one unit above the maximum and attempt to submit — note the result.',
+                    'Enter one unit below the minimum and attempt to submit — note the result.',
+                ],
+                expectedResult: `Values within range are accepted; values outside the range are rejected with a clear validation message indicating the allowed limits.`,
                 severity: 'major',
                 type: 'functional',
             }];
@@ -155,7 +191,19 @@ const TEMPLATES = [
             return [{
                 ucRef,
                 title: `Verify UI elements and layout for ${feature}`,
-                description: `Ensure all UI elements (buttons, labels, fields, messages) for the ${feature} are correctly displayed, labelled, and accessible across supported screen sizes.`,
+                description: [
+                    `All UI elements for ${feature} are correctly displayed and labelled.`,
+                    'The layout must be consistent and accessible across supported screen sizes.',
+                    'Interactive elements must be keyboard-navigable.',
+                ],
+                steps: [
+                    `Open the page or screen for ${feature} on a desktop-sized viewport.`,
+                    'Verify all buttons, labels, input fields, and icons are visible and correctly labelled.',
+                    'Resize the viewport to tablet and mobile sizes; verify the layout adapts responsively.',
+                    'Use keyboard-only navigation (Tab, Enter) to interact with all controls.',
+                    'Check colour contrast for accessibility compliance.',
+                ],
+                expectedResult: `All UI elements render correctly on all supported viewport sizes, labels are accurate, and the interface is fully keyboard-accessible.`,
                 severity: 'minor',
                 type: 'ui',
             }];
@@ -170,7 +218,20 @@ const TEMPLATES = [
             return [{
                 ucRef,
                 title: `Verify personal data protection in ${feature}`,
-                description: `Ensure all personal/sensitive data handled by the ${feature} is properly masked, encrypted, and only accessible to authorized roles in compliance with privacy regulations.`,
+                description: [
+                    `Sensitive/personal data in ${feature} must be protected at rest and in transit.`,
+                    'Data must be masked or redacted in UI where applicable.',
+                    'Access must be restricted to authorised roles only.',
+                    'Processing must comply with applicable privacy regulations (GDPR, CCPA, etc.).',
+                ],
+                steps: [
+                    'Log in as a user without elevated permissions and attempt to view or export sensitive data.',
+                    'Inspect network requests to confirm personal data is transmitted over HTTPS.',
+                    `Verify that sensitive fields (e.g. passwords, SSN) are masked in the UI for ${feature}.`,
+                    'Check that audit/access logs capture access to personal data.',
+                    'Confirm that data-retention and deletion policies are enforced.',
+                ],
+                expectedResult: `Personal and sensitive data is masked in the UI, transmitted securely, accessible only to authorised roles, and handled in compliance with privacy regulations.`,
                 severity: 'critical',
                 type: 'privacy',
             }];
@@ -185,7 +246,19 @@ const TEMPLATES = [
             return [{
                 ucRef,
                 title: `Verify access control and security for ${feature}`,
-                description: `Ensure the ${feature} enforces proper authentication, authorization, and protection against common security threats (injection, XSS, CSRF, brute-force, etc.).`,
+                description: [
+                    `${feature} must enforce proper authentication and authorisation.`,
+                    'Common attack vectors must be mitigated (injection, XSS, CSRF, brute-force).',
+                    'Unauthenticated or unauthorised access attempts must be rejected.',
+                ],
+                steps: [
+                    'Attempt to access the feature without authentication — verify redirection to login.',
+                    'Log in as a lower-privilege user and attempt to perform privileged actions.',
+                    'Inject SQL/XSS payloads into input fields and verify they are sanitised.',
+                    'Attempt repeated failed logins to verify brute-force protection/lockout.',
+                    'Verify CSRF tokens are present and validated on state-changing requests.',
+                ],
+                expectedResult: `Unauthenticated and unauthorised requests are rejected; injected payloads are neutralised; brute-force and CSRF protections are active and effective.`,
                 severity: 'showstopper',
                 type: 'security',
             }];
@@ -200,7 +273,19 @@ const TEMPLATES = [
             return [{
                 ucRef,
                 title: `Verify performance and reliability of ${feature}`,
-                description: `Ensure the ${feature} meets the defined non-functional requirements (response time, load capacity, availability) under normal and peak traffic conditions.`,
+                description: [
+                    `${feature} must meet defined non-functional requirements under normal and peak load.`,
+                    'Response times must stay within acceptable thresholds.',
+                    'The feature must remain available and recover gracefully from failures.',
+                ],
+                steps: [
+                    `Execute the ${feature} workflow under normal load and measure response time.`,
+                    'Simulate peak load (concurrent users) and observe system performance.',
+                    'Verify the feature remains available and returns within SLA limits.',
+                    'Introduce a failure condition (e.g. service outage) and verify graceful degradation.',
+                    'Verify recovery once the failure is resolved.',
+                ],
+                expectedResult: `The ${feature} responds within the defined SLA thresholds under normal and peak load, degrades gracefully under failure, and recovers automatically.`,
                 severity: 'minor',
                 type: 'non-functional',
             }];
@@ -410,10 +495,69 @@ function parseXlsxToUseCases(rawRows) {
         }));
 }
 
-/* ─────────────────────────────────────────────
-   UI / DOM logic  (runs only when this script's
-   host elements exist on the page)
-───────────────────────────────────────────── */
+/**
+ * Parse a plain-text string extracted from a DOCX or PDF file into use-case objects.
+ * Delegates to the existing parseTxt logic.
+ */
+function parsePlainText(text) {
+    return parseTxt(text);
+}
+
+/**
+ * Extract plain text from a DOCX file (ArrayBuffer) using JSZip + DOMParser.
+ * Returns a Promise that resolves to a plain-text string.
+ */
+async function extractDocxText(arrayBuffer) {
+    if (typeof JSZip === 'undefined') {
+        throw new Error('JSZip library not loaded. Please refresh the page.');
+    }
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const xmlFile = zip.file('word/document.xml');
+    if (!xmlFile) throw new Error('Not a valid DOCX file (word/document.xml missing).');
+    const xmlText = await xmlFile.async('string');
+
+    // Parse the XML with DOMParser and extract text via the Word namespace
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(xmlText, 'text/xml');
+    const NS_W = 'http://schemas.openxmlformats.org/wordprocessingml/2006/main';
+    const paragraphs = Array.from(doc.getElementsByTagNameNS(NS_W, 'p'));
+
+    if (paragraphs.length > 0) {
+        const lines = paragraphs.map(p =>
+            Array.from(p.getElementsByTagNameNS(NS_W, 't'))
+                .map(t => t.textContent)
+                .join('')
+        );
+        return lines.filter(Boolean).join('\n\n').trim();
+    }
+
+    // Fallback: return raw text content (safe — no HTML involved)
+    return doc.documentElement.textContent.trim();
+}
+
+/**
+ * Extract plain text from a PDF file (ArrayBuffer) using PDF.js.
+ * Returns a Promise that resolves to a plain-text string.
+ */
+async function extractPdfText(arrayBuffer) {
+    if (typeof pdfjsLib === 'undefined') {
+        throw new Error('PDF.js library not loaded. Please refresh the page.');
+    }
+    // Point the worker at the same CDN version
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://unpkg.com/pdfjs-dist@4.9.155/legacy/build/pdf.worker.min.js';
+
+    const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+    const pages = [];
+    for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        pages.push(content.items.map(item => item.str).join(' '));
+    }
+    return pages.join('\n\n').trim();
+}
+
+
 
 (function () {
     const dropZone    = document.getElementById('gen-drop-zone');
@@ -457,9 +601,14 @@ function parseXlsxToUseCases(rawRows) {
 
     function handleFile(file) {
         const name = file.name.toLowerCase();
-        const allowed = ['.txt', '.csv', '.xlsx'];
+        const allowed = ['.txt', '.csv', '.xlsx', '.docx', '.doc', '.pdf'];
         if (!allowed.some(ext => name.endsWith(ext))) {
-            setStatus('⚠ Please upload a .txt, .csv, or .xlsx file.', 'error');
+            setStatus('⚠ Please upload a .txt, .csv, .xlsx, .docx, or .pdf file.', 'error');
+            btnGenerate.disabled = true;
+            return;
+        }
+        if (name.endsWith('.doc') && !name.endsWith('.docx')) {
+            setStatus('⚠ Legacy .doc format is not supported. Please save the file as .docx and re-upload.', 'error');
             btnGenerate.disabled = true;
             return;
         }
@@ -512,6 +661,44 @@ function parseXlsxToUseCases(rawRows) {
                 }
             };
             reader.readAsText(file);
+
+        } else if (name.endsWith('.docx')) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                extractDocxText(e.target.result).then(text => {
+                    parsedUseCases = parsePlainText(text);
+                    if (!parsedUseCases.length) {
+                        setStatus('⚠ No use cases found in the DOCX file.', 'error');
+                        btnGenerate.disabled = true;
+                        return;
+                    }
+                    setStatus(`✔ Found ${parsedUseCases.length} use case block(s) in DOCX. Click Generate.`, 'success');
+                    btnGenerate.disabled = false;
+                }).catch(err => {
+                    setStatus('⚠ Could not parse DOCX: ' + err.message, 'error');
+                    btnGenerate.disabled = true;
+                });
+            };
+            reader.readAsArrayBuffer(file);
+
+        } else if (name.endsWith('.pdf')) {
+            const reader = new FileReader();
+            reader.onload = e => {
+                extractPdfText(e.target.result).then(text => {
+                    parsedUseCases = parsePlainText(text);
+                    if (!parsedUseCases.length) {
+                        setStatus('⚠ No use cases found in the PDF.', 'error');
+                        btnGenerate.disabled = true;
+                        return;
+                    }
+                    setStatus(`✔ Found ${parsedUseCases.length} use case block(s) in PDF. Click Generate.`, 'success');
+                    btnGenerate.disabled = false;
+                }).catch(err => {
+                    setStatus('⚠ Could not parse PDF: ' + err.message, 'error');
+                    btnGenerate.disabled = true;
+                });
+            };
+            reader.readAsArrayBuffer(file);
 
         } else {
             // .xlsx
@@ -585,11 +772,27 @@ function parseXlsxToUseCases(rawRows) {
         tbody.innerHTML = '';
         tcs.forEach(tc => {
             const tr = document.createElement('tr');
+
+            // Description: bulleted list
+            const descHtml = Array.isArray(tc.description)
+                ? `<ul class="tc-list">${tc.description.map(d => `<li>${esc(d)}</li>`).join('')}</ul>`
+                : esc(tc.description);
+
+            // Steps: numbered list
+            const stepsHtml = Array.isArray(tc.steps) && tc.steps.length
+                ? `<ol class="tc-list">${tc.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>`
+                : '';
+
+            // Expected Result: plain text
+            const expectedHtml = tc.expectedResult ? esc(tc.expectedResult) : '';
+
             tr.innerHTML = `
                 <td>${esc(tc.id)}</td>
                 <td>${esc(tc.ucRef)}</td>
                 <td>${esc(tc.title)}</td>
-                <td>${esc(tc.description)}</td>
+                <td>${descHtml}</td>
+                <td>${stepsHtml}</td>
+                <td>${expectedHtml}</td>
                 <td><span class="badge-severity sev-${esc(tc.severity)}">${esc(tc.severity)}</span></td>
                 <td><span class="badge-type type-${esc(tc.type)}">${esc(tc.type)}</span></td>
             `;
@@ -603,8 +806,17 @@ function parseXlsxToUseCases(rawRows) {
     if (btnExport) {
         btnExport.addEventListener('click', () => {
             if (!generatedTCs || !generatedTCs.length) return;
-            const header = ['TC ID', 'Use Case Ref', 'Title', 'Description', 'Severity', 'Type'];
-            const rows   = generatedTCs.map(tc => [tc.id, tc.ucRef, tc.title, tc.description, tc.severity, tc.type]);
+            const header = ['TC ID', 'Use Case Ref', 'Title', 'Description', 'Steps', 'Expected Result', 'Severity', 'Type'];
+            const rows   = generatedTCs.map(tc => [
+                tc.id,
+                tc.ucRef,
+                tc.title,
+                Array.isArray(tc.description) && tc.description.length ? tc.description.join(' | ') : String(tc.description || ''),
+                Array.isArray(tc.steps)       && tc.steps.length       ? tc.steps.join(' | ')       : String(tc.steps || ''),
+                tc.expectedResult || '',
+                tc.severity,
+                tc.type,
+            ]);
             const csvContent = [header, ...rows]
                 .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
                 .join('\r\n');
