@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Test Case Analyser</title>
     <link rel="stylesheet" href="test-case-analyzer.css">
+    <script>
+        (function () {
+            var t = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', t);
+        }());
+    </script>
     <!-- read-excel-file for XLSX parsing (client-side, no server required) -->
     <script src="read-excel-file.min.js"></script>
 </head>
@@ -103,5 +109,16 @@
 </main>
 
 <script src="test-case-analyzer.js"></script>
+<script>
+(function () {
+    window.addEventListener('message', function (e) {
+        if (e.origin !== window.location.origin) { return; }
+        if (e.data && e.data.type === 'theme-change') {
+            document.documentElement.setAttribute('data-theme', e.data.theme);
+            localStorage.setItem('theme', e.data.theme);
+        }
+    });
+}());
+</script>
 </body>
 </html>
