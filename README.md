@@ -1,30 +1,45 @@
 # SDLC Dashboard
 
-## Setup Instructions
-1. **Clone the repository:**  
-   Run the following command to clone the repository:
-   ```bash
-   git clone https://github.com/vigneshwaran-kr-6055/Dashboard.git
-   cd Dashboard
-   ```  
-2. **Install Dependencies:**  
-   Make sure you have Node.js installed. Run the following command to install dependencies:
-   ```bash
-   npm install
-   ```  
-3. **Environment Variables:**  
-   Create a `.env` file at the root of the project and add necessary configurations as follows:
-   ```
-   DB_HOST=your_database_host
-   DB_USER=your_database_user
-   DB_PASS=your_database_password
-   API_KEY=your_api_key
-   ```  
-4. **Run the Application:**  
-   Start the server with:
-   ```bash
-   npm start
-   ```
+Live site: **https://vigneshwaran-kr-6055.github.io/Test-Cases/**
+
+## How to publish this repo (GitHub Pages)
+
+The site deploys automatically via GitHub Actions whenever code is pushed to `main`.
+All the required files are already in place:
+
+| File | Purpose |
+|------|---------|
+| `.github/workflows/deploy.yml` | Deploys to GitHub Pages on every push to `main` |
+| `.nojekyll` | Tells GitHub Pages to serve files as-is (no Jekyll processing) |
+
+### Step-by-step: merge the open PR and go live
+
+1. Open **[Pull Request #2](https://github.com/vigneshwaran-kr-6055/Test-Cases/pull/2)** in your browser.
+2. Click **"Ready for review"** (it is currently a draft).
+3. Click **"Merge pull request"** → **"Confirm merge"**.
+4. GitHub Actions will automatically run the **Deploy to GitHub Pages** workflow.
+5. After ~1 minute the site will be live at:
+   - **https://vigneshwaran-kr-6055.github.io/Test-Cases/** (dashboard)
+   - **https://vigneshwaran-kr-6055.github.io/Test-Cases/test-case-analyzer.html** (analyser tool)
+
+### Alternative: trigger the deployment manually (without merging)
+
+1. Go to **[Actions → Deploy to GitHub Pages](https://github.com/vigneshwaran-kr-6055/Test-Cases/actions/workflows/deploy.yml)**.
+2. Click **"Run workflow"**.
+3. Select branch **`copilot/fix-published-link-error`** from the dropdown.
+4. Click **"Run workflow"** — the site will deploy within ~1 minute.
+
+## Local development
+
+Clone the repo and open `index.html` directly in your browser — no build step needed.
+
+```bash
+git clone https://github.com/vigneshwaran-kr-6055/Test-Cases.git
+cd Test-Cases
+open index.html   # macOS
+# or: start index.html  (Windows)
+# or: xdg-open index.html  (Linux)
+```
 
 ## API Integration Guide
 * To integrate the API, follow these steps:
