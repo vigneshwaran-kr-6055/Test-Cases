@@ -1,44 +1,94 @@
-# SDLC Dashboard
+# SDLC Dashboard — Test Case Analyser
 
-Live site: **https://vigneshwaran-kr-6055.github.io/Test-Cases/**
+Live site: **https://test-case-analyser.production.catalystserverless.com/app/**
 
-## How to publish this repo (GitHub Pages)
+> The site is hosted on **Zoho Catalyst** — the URL is purely project-name based and does not include any GitHub username.
 
-The site deploys automatically via GitHub Actions whenever code is pushed to `main`.
-All the required files are already in place:
+## Project structure
 
-| File | Purpose |
-|------|---------|
-| `.github/workflows/deploy.yml` | Deploys to GitHub Pages on every push to `main` |
-| `.nojekyll` | Tells GitHub Pages to serve files as-is (no Jekyll processing) |
+```
+├── catalyst.json                  # Zoho Catalyst project configuration
+├── client/
+│   └── app/                       # Static web-client (served by Catalyst)
+│       ├── index.html
+│       ├── test-case-analyzer.html
+│       ├── test-case-analyzer.js
+│       ├── test-case-analyzer.css
+│       ├── styles.css
+│       ├── dashboard.html
+│       ├── dashboard.js
+│       ├── dashboard-script.js
+│       ├── dashboard-styles.css
+│       ├── read-excel-file.min.js
+│       └── client-package.json    # Catalyst web-client descriptor
+└── .github/
+    └── workflows/
+        └── catalyst-deploy.yml    # Auto-deploys to Catalyst on push to main
+```
 
-### Step-by-step: merge the open PR and go live
+## How to publish to Zoho Catalyst
 
-1. Open **[Pull Request #2](https://github.com/vigneshwaran-kr-6055/Test-Cases/pull/2)** in your browser.
-2. Click **"Ready for review"** (it is currently a draft).
-3. Click **"Merge pull request"** → **"Confirm merge"**.
-4. GitHub Actions will automatically run the **Deploy to GitHub Pages** workflow.
-5. After ~1 minute the site will be live at:
-   - **https://vigneshwaran-kr-6055.github.io/Test-Cases/** (dashboard)
-   - **https://vigneshwaran-kr-6055.github.io/Test-Cases/test-case-analyzer.html** (analyser tool)
+### Prerequisites
 
-### Alternative: trigger the deployment manually (without merging)
+1. Sign up / log in at [catalyst.zoho.com](https://catalyst.zoho.com).
+2. Install the Catalyst CLI:
+   ```bash
+   npm install -g zcatalyst-cli
+   ```
+3. Create a new Catalyst project named **`test-case-analyser`** in the Catalyst console.
+4. Note down your **Project ID**, **Org ID**, and **Web Client ID** from the project settings.
 
-1. Go to **[Actions → Deploy to GitHub Pages](https://github.com/vigneshwaran-kr-6055/Test-Cases/actions/workflows/deploy.yml)**.
-2. Click **"Run workflow"**.
-3. Select branch **`copilot/fix-published-link-error`** from the dropdown.
-4. Click **"Run workflow"** — the site will deploy within ~1 minute.
+### One-time setup
+
+1. Open `catalyst.json` and replace the placeholder values with your actual IDs:
+
+   | Placeholder | Where to find it |
+   |---|---|
+   | `YOUR_PROJECT_ID` | Catalyst Console → Project Settings |
+   | `YOUR_ORG_ID` | Catalyst Console → Organization Settings |
+   | `YOUR_CLIENT_ID` | Catalyst Console → Web Client → App settings |
+
+2. Add a GitHub Actions secret named **`CATALYST_TOKEN`**:
+   ```bash
+   # Generate a token locally (run once, requires CLI login)
+   catalyst token:generate
+   ```
+   Then go to **GitHub → Settings → Secrets → Actions** and add `CATALYST_TOKEN`.
+
+### Automatic deployment (CI/CD)
+
+Push to `main` — GitHub Actions runs `.github/workflows/catalyst-deploy.yml` and deploys to Catalyst automatically.
+
+### Manual deployment
+
+```bash
+catalyst login          # authenticate once
+catalyst deploy         # deploy to development environment
+```
+
+Promote to production from the **Catalyst Console → Deployments** tab.
+
+## URL
+
+| Environment | URL |
+|---|---|
+| Development | `https://test-case-analyser-development.catalystserverless.com/app/` |
+| Production  | `https://test-case-analyser.production.catalystserverless.com/app/`  |
+
+> **Tip:** To remove the `/app` suffix, add an API Gateway rule in the Catalyst Console:
+> - Request URL: `/ {path1: (.*)}`
+> - Target: Web Client Hosting → `/app/{path1}`
 
 ## Local development
 
-Clone the repo and open `index.html` directly in your browser — no build step needed.
+Clone the repo and open `client/app/index.html` directly in your browser — no build step needed.
 
 ```bash
 git clone https://github.com/vigneshwaran-kr-6055/Test-Cases.git
-cd Test-Cases
-open index.html   # macOS
-# or: start index.html  (Windows)
-# or: xdg-open index.html  (Linux)
+cd Test-Cases/client/app
+open index.html          # macOS
+# or: start index.html   (Windows)
+# or: xdg-open index.html (Linux)
 ```
 
 ## API Integration Guide

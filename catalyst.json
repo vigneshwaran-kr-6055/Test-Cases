@@ -1,0 +1,18 @@
+{
+  "project_name": "test-case-analyser",
+  "project_id": "YOUR_PROJECT_ID",
+  "org_id": "YOUR_ORG_ID",
+  "platform_type": "lowcode",
+  "web_client": [
+    {
+      "id": "YOUR_CLIENT_ID",
+      "app_name": "app",
+      "type": "static",
+      "platform_type": "lowcode",
+      "client_zip_name": "app",
+      "absolute_path": "client/app",
+      "build_path": "client/app",
+      "build_command": ""
+    }
+  ]
+}

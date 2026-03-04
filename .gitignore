@@ -18,3 +18,6 @@ config.js
 # OS specific files
 .DS_Store
 Thumbs.db
+
+# Zoho Catalyst local CLI state
+.catalyst/
