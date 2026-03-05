@@ -359,46 +359,15 @@
     ───────────────────────────────────────────── */
     function buildSumDetailHtml(entry) {
         var html = '';
-        var stats = entry.stats || {};
 
-        // Statistics chips
-        html += '<div class="hist-detail-summary">';
-        html += '<div class="hist-stat-row">';
-        html += '<div class="hist-stat-chip"><div class="num">' + esc(entry.totalRows || 0) + '</div><div class="lbl">Total test cases</div></div>';
-        if ((entry.useCases || []).length) {
-            html += '<div class="hist-stat-chip"><div class="num">' + esc(entry.useCases.length) + '</div><div class="lbl">Use cases</div></div>';
-        }
-        var autoTotal = (stats.automatable || 0) + (stats.notAutomatable || 0);
-        if (autoTotal > 0) {
-            var autoPct = Math.round(((stats.automatable || 0) / autoTotal) * 100);
-            html += '<div class="hist-stat-chip" style="border-top:3px solid #2e7d32"><div class="num" style="color:#2e7d32">' + esc(autoPct) + '%</div><div class="lbl">Automatable</div></div>';
-        }
-        if (stats.withBug) {
-            html += '<div class="hist-stat-chip" style="border-top:3px solid #c62828"><div class="num" style="color:#c62828">' + esc(stats.withBug) + '</div><div class="lbl">Linked bugs</div></div>';
-        }
-        html += '</div>';
-        html += '</div>';
-
-        // Model used
+        // File metadata line
         if (entry.model) {
-            html += '<div style="margin:12px 0 18px;font-size:0.88rem;color:var(--text-secondary)">🤖 Generated with: <strong>' + esc(entry.model) + '</strong></div>';
+            html += '<div style="margin:0 0 18px;font-size:0.88rem;color:var(--text-secondary)">Generated with: <strong>' + esc(entry.model) + '</strong></div>';
         }
 
-        // AI summary content
+        // Feature narrative (the main content)
         if (entry.summaryHtml) {
             html += '<div class="hist-sum-content">' + entry.summaryHtml + '</div>';
-        }
-
-        // Use case breakdown
-        if (entry.useCaseBreakdown && entry.useCaseBreakdown.length) {
-            html += '<div class="hist-gap-section" style="margin-top:20px">';
-            html += '<h3 class="hist-gap-title">📋 Use Case Breakdown</h3>';
-            html += '<table class="hist-detail-table"><thead><tr><th>Use Case / Module</th><th>Test Cases</th></tr></thead><tbody>';
-            entry.useCaseBreakdown.forEach(function (uc) {
-                html += '<tr><td>' + esc(uc.name) + '</td><td style="text-align:center">' + esc(uc.count) + '</td></tr>';
-            });
-            html += '</tbody></table>';
-            html += '</div>';
         }
 
         return html;
