@@ -223,6 +223,20 @@ main { max-width: 1100px; margin: 32px auto; padding: 0 24px 60px; }
 .stat-chip .num { font-size: 2rem; font-weight: 700; color: var(--accent); line-height: 1; }
 .stat-chip .lbl { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
 
+/* Clickable gap-category chips */
+.stat-chip--link {
+    cursor: pointer;
+    transition: background 0.2s, transform 0.15s, box-shadow 0.2s;
+}
+.stat-chip--link:hover,
+.stat-chip--link:focus-visible {
+    background: var(--drop-hover-bg);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.12);
+    outline: none;
+}
+.stat-chip--link:active { transform: translateY(0); }
+
 /* ===== Feature Tags ===== */
 .feature-tags { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
 .feature-tag {

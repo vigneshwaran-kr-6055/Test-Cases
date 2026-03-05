@@ -623,6 +623,23 @@ function analyzeTestCases(rows) {
         if (fileInput.files[0]) handleFileSelected(fileInput.files[0]);
     });
 
+    /* ── Summary chip → section scroll ── */
+    document.querySelectorAll('.stat-chip--link[data-target]').forEach(chip => {
+        function scrollToTarget() {
+            const target = document.getElementById(chip.dataset.target);
+            if (target && target.classList.contains('visible')) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+        chip.addEventListener('click', scrollToTarget);
+        chip.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                scrollToTarget();
+            }
+        });
+    });
+
     function handleFileSelected(file) {
         const name = file.name.toLowerCase();
         if (!name.endsWith('.xlsx') && !name.endsWith('.csv')) {
