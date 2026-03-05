@@ -365,8 +365,8 @@ function buildAIPrompt(rows, cols, stats) {
     }
     if (stats.withBug) prompt += '- Test cases with linked bug IDs: ' + stats.withBug + '\n';
 
-    // Sample test cases (up to 80 rows to stay within token limits)
-    var sample = rows.slice(0, 80);
+    // Sample test cases (limited to AI_MAX_SAMPLE_ROWS to stay within API token limits)
+    var sample = rows.slice(0, AI_MAX_SAMPLE_ROWS);
     prompt += '\n## Sample Test Cases\n';
     sample.forEach(function (row, i) {
         var parts = [];
@@ -378,8 +378,8 @@ function buildAIPrompt(rows, cols, stats) {
         if (cols.expectedResult) parts.push('Expected: ' + String(row[cols.expectedResult] || '').trim().slice(0, 120));
         prompt += (i + 1) + '. ' + parts.join(' | ') + '\n';
     });
-    if (rows.length > 80) {
-        prompt += '… and ' + (rows.length - 80) + ' more test cases not shown.\n';
+    if (rows.length > AI_MAX_SAMPLE_ROWS) {
+        prompt += '… and ' + (rows.length - AI_MAX_SAMPLE_ROWS) + ' more test cases not shown.\n';
     }
 
     prompt += '\n## Your Task\nPlease provide:\n';
@@ -405,8 +405,8 @@ async function callOpenAI(apiKey, prompt) {
         body: JSON.stringify({
             model: 'gpt-4o',
             messages: [{ role: 'user', content: prompt }],
-            max_tokens: 1500,
-            temperature: 0.3,
+            max_tokens: AI_MAX_RESPONSE_TOKENS,
+            temperature: AI_TEMPERATURE,
         }),
     });
 
@@ -427,7 +427,7 @@ async function callGemini(apiKey, prompt) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
             contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.3, maxOutputTokens: 1500 },
+            generationConfig: { temperature: AI_TEMPERATURE, maxOutputTokens: AI_MAX_RESPONSE_TOKENS },
         }),
     });
 
@@ -480,19 +480,32 @@ function aiTextToHtml(text) {
 }
 
 /* ─────────────────────────────────────────────
+   Constants
+───────────────────────────────────────────── */
+/** Maximum number of test case rows sent to AI APIs (keeps prompt within typical token limits). */
+var AI_MAX_SAMPLE_ROWS = 80;
+
+/** Max tokens requested from AI models — long enough for a detailed summary, short enough to be cost-effective. */
+var AI_MAX_RESPONSE_TOKENS = 1500;
+
+/** Low temperature for factual, consistent summaries (not creative writing). */
+var AI_TEMPERATURE = 0.3;
+
+/* ─────────────────────────────────────────────
    History helpers
 ───────────────────────────────────────────── */
 const SUM_HISTORY_KEY = 'tca_sum_history';
+/** Cap at 20 entries — balances UX utility and localStorage size constraints. */
 const SUM_HISTORY_MAX = 20;
 
-function saveToSumHistory(fileName, model, stats, summaryHtml, useCaseBreakdown) {
+function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreakdown) {
     var history = [];
     try { history = JSON.parse(localStorage.getItem(SUM_HISTORY_KEY) || '[]'); } catch (e) { history = []; }
     var entry = {
         id:               Date.now(),
         fileName:         fileName,
         timestamp:        new Date().toISOString(),
-        model:            model,
+        model:            modelLabel,
         totalRows:        stats.total,
         useCases:         stats.useCases,
         stats:            stats,
@@ -504,13 +517,14 @@ function saveToSumHistory(fileName, model, stats, summaryHtml, useCaseBreakdown)
     try {
         localStorage.setItem(SUM_HISTORY_KEY, JSON.stringify(history));
     } catch (e) {
+        // localStorage quota exceeded — trim entries one by one until it fits
         while (history.length > 1) {
             history.pop();
-            try { localStorage.setItem(SUM_HISTORY_KEY, JSON.stringify(history)); break; } catch (e2) { /* continue */ }
+            try { localStorage.setItem(SUM_HISTORY_KEY, JSON.stringify(history)); break; } catch (e2) { /* continue trimming */ }
         }
     }
-    // Notify parent (the main page) that history changed
-    try { window.dispatchEvent(new CustomEvent('tca-history-updated')); } catch (e) {}
+    // Notify the history tab to refresh (failure is non-fatal — tab will refresh on next open)
+    try { window.dispatchEvent(new CustomEvent('tca-history-updated')); } catch (e) { /* ignore */ }
 }
 
 /* ─────────────────────────────────────────────
@@ -630,10 +644,10 @@ function saveToSumHistory(fileName, model, stats, summaryHtml, useCaseBreakdown)
             return;
         }
 
-        var model  = modelSelect.value;
+        var selectedModel = modelSelect.value;
         var apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
 
-        if (model !== 'builtin' && !apiKey) {
+        if (selectedModel !== 'builtin' && !apiKey) {
             setStatus('⚠ Please enter your API key for the selected AI model.', 'error');
             return;
         }
@@ -649,13 +663,13 @@ function saveToSumHistory(fileName, model, stats, summaryHtml, useCaseBreakdown)
             var summaryHtml;
             var modelLabel;
 
-            if (model === 'openai') {
+            if (selectedModel === 'openai') {
                 setStatus('⏳ Calling OpenAI GPT-4o…', 'info');
                 modelLabel = 'OpenAI GPT-4o';
                 var prompt   = buildAIPrompt(parsedRows, cols, stats);
                 var aiText   = await callOpenAI(apiKey, prompt);
                 summaryHtml  = aiTextToHtml(aiText);
-            } else if (model === 'gemini') {
+            } else if (selectedModel === 'gemini') {
                 setStatus('⏳ Calling Google Gemini 1.5 Pro…', 'info');
                 modelLabel = 'Google Gemini 1.5 Pro';
                 var prompt   = buildAIPrompt(parsedRows, cols, stats);
