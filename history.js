@@ -1,9 +1,10 @@
 /**
  * history.js
- * Renders the History tab for generated and reviewed test cases.
+ * Renders the History tab for generated, reviewed, and summarised test cases.
  * Reads entries from localStorage keys:
  *   tca_gen_history  – generated test cases
  *   tca_rev_history  – reviewed / analysed test cases
+ *   tca_sum_history  – test case summaries
  */
 
 'use strict';
@@ -15,6 +16,7 @@
     ───────────────────────────────────────────── */
     const GEN_KEY = 'tca_gen_history';
     const REV_KEY = 'tca_rev_history';
+    const SUM_KEY = 'tca_sum_history';
 
     /* ─────────────────────────────────────────────
        Helpers
@@ -264,11 +266,15 @@
         containerEl.innerHTML = '';
 
         if (!entries.length) {
-            containerEl.innerHTML = '<p class="hist-empty">No history yet. ' +
-                (type === 'generated'
-                    ? 'Generate test cases from the ⚡ Generator tab to see entries here.'
-                    : 'Analyse test cases from the 🔍 Reviewer tab to see entries here.') +
-                '</p>';
+            var emptyMsg = 'No history yet. ';
+            if (type === 'generated') {
+                emptyMsg += 'Generate test cases from the ⚡ Generator tab to see entries here.';
+            } else if (type === 'summarised') {
+                emptyMsg += 'Summarise test cases from the 📋 Summary tab to see entries here.';
+            } else {
+                emptyMsg += 'Analyse test cases from the 🔍 Reviewer tab to see entries here.';
+            }
+            containerEl.innerHTML = '<p class="hist-empty">' + emptyMsg + '</p>';
             return;
         }
 
@@ -281,6 +287,14 @@
             if (type === 'generated') {
                 var s = entry.summary || {};
                 metaHtml = '<span class="hist-meta-badge">' + esc(s.total || (entry.testCases || []).length) + ' test cases</span>';
+            } else if (type === 'summarised') {
+                metaHtml = '<span class="hist-meta-badge">' + esc(entry.totalRows || 0) + ' test cases</span>';
+                if (entry.model) {
+                    metaHtml += '<span class="hist-meta-badge" style="background:var(--status-info-bg);color:var(--status-info-color)">' + esc(entry.model) + '</span>';
+                }
+                if ((entry.useCases || []).length) {
+                    metaHtml += '<span class="hist-meta-badge">' + esc(entry.useCases.length) + ' use case(s)</span>';
+                }
             } else {
                 var gapCount = ['functional','privacy','security','performance'].reduce(function (acc, k) {
                     return acc + (entry[k] || []).filter(function (c) { return !c.covered && !c.notApplicable; }).length;
@@ -289,9 +303,11 @@
                          + '<span class="hist-meta-badge hist-badge-gap">' + esc(gapCount) + ' gap(s)</span>';
             }
 
+            var fileIcon = type === 'generated' ? '⚡' : type === 'summarised' ? '📋' : '🔍';
+
             card.innerHTML =
                 '<div class="hist-entry-left">' +
-                    '<span class="hist-file-icon">' + (type === 'generated' ? '⚡' : '🔍') + '</span>' +
+                    '<span class="hist-file-icon">' + fileIcon + '</span>' +
                     '<div class="hist-entry-info">' +
                         '<div class="hist-entry-name">' + esc(entry.fileName) + '</div>' +
                         '<div class="hist-entry-date">' + esc(formatDate(entry.timestamp)) + '</div>' +
@@ -308,8 +324,13 @@
 
             // View button
             card.querySelector('.hist-btn-view').addEventListener('click', function () {
-                var title = (type === 'generated' ? '⚡ Generated: ' : '🔍 Reviewed: ') + entry.fileName + '  ·  ' + formatDate(entry.timestamp);
-                var html  = type === 'generated' ? buildGenDetailHtml(entry) : buildRevDetailHtml(entry);
+                var prefix = type === 'generated' ? '⚡ Generated: ' : type === 'summarised' ? '📋 Summary: ' : '🔍 Reviewed: ';
+                var title  = prefix + entry.fileName + '  ·  ' + formatDate(entry.timestamp);
+                var html   = type === 'generated'
+                    ? buildGenDetailHtml(entry)
+                    : type === 'summarised'
+                        ? buildSumDetailHtml(entry)
+                        : buildRevDetailHtml(entry);
                 openModal(title, html);
             });
 
@@ -321,7 +342,7 @@
 
             // Delete button
             card.querySelector('.hist-btn-delete').addEventListener('click', function () {
-                var key = type === 'generated' ? GEN_KEY : REV_KEY;
+                var key = type === 'generated' ? GEN_KEY : type === 'summarised' ? SUM_KEY : REV_KEY;
                 var all = loadHistory(key);
                 var idx = all.findIndex(function (e) { return e.id === entry.id; });
                 if (idx !== -1) all.splice(idx, 1);
@@ -334,15 +355,67 @@
     }
 
     /* ─────────────────────────────────────────────
+       Build modal content for summarised entry
+    ───────────────────────────────────────────── */
+    function buildSumDetailHtml(entry) {
+        var html = '';
+        var stats = entry.stats || {};
+
+        // Statistics chips
+        html += '<div class="hist-detail-summary">';
+        html += '<div class="hist-stat-row">';
+        html += '<div class="hist-stat-chip"><div class="num">' + esc(entry.totalRows || 0) + '</div><div class="lbl">Total test cases</div></div>';
+        if ((entry.useCases || []).length) {
+            html += '<div class="hist-stat-chip"><div class="num">' + esc(entry.useCases.length) + '</div><div class="lbl">Use cases</div></div>';
+        }
+        var autoTotal = (stats.automatable || 0) + (stats.notAutomatable || 0);
+        if (autoTotal > 0) {
+            var autoPct = Math.round(((stats.automatable || 0) / autoTotal) * 100);
+            html += '<div class="hist-stat-chip" style="border-top:3px solid #2e7d32"><div class="num" style="color:#2e7d32">' + esc(autoPct) + '%</div><div class="lbl">Automatable</div></div>';
+        }
+        if (stats.withBug) {
+            html += '<div class="hist-stat-chip" style="border-top:3px solid #c62828"><div class="num" style="color:#c62828">' + esc(stats.withBug) + '</div><div class="lbl">Linked bugs</div></div>';
+        }
+        html += '</div>';
+        html += '</div>';
+
+        // Model used
+        if (entry.model) {
+            html += '<div style="margin:12px 0 18px;font-size:0.88rem;color:var(--text-secondary)">🤖 Generated with: <strong>' + esc(entry.model) + '</strong></div>';
+        }
+
+        // AI summary content
+        if (entry.summaryHtml) {
+            html += '<div class="hist-sum-content">' + entry.summaryHtml + '</div>';
+        }
+
+        // Use case breakdown
+        if (entry.useCaseBreakdown && entry.useCaseBreakdown.length) {
+            html += '<div class="hist-gap-section" style="margin-top:20px">';
+            html += '<h3 class="hist-gap-title">📋 Use Case Breakdown</h3>';
+            html += '<table class="hist-detail-table"><thead><tr><th>Use Case / Module</th><th>Test Cases</th></tr></thead><tbody>';
+            entry.useCaseBreakdown.forEach(function (uc) {
+                html += '<tr><td>' + esc(uc.name) + '</td><td style="text-align:center">' + esc(uc.count) + '</td></tr>';
+            });
+            html += '</tbody></table>';
+            html += '</div>';
+        }
+
+        return html;
+    }
+
+    /* ─────────────────────────────────────────────
        Main render
     ───────────────────────────────────────────── */
     function renderHistory() {
         var genContainer = document.getElementById('hist-gen-list');
         var revContainer = document.getElementById('hist-rev-list');
+        var sumContainer = document.getElementById('hist-sum-list');
         if (!genContainer || !revContainer) return;
 
         var genEntries = loadHistory(GEN_KEY);
         var revEntries = loadHistory(REV_KEY);
+        var sumEntries = loadHistory(SUM_KEY);
 
         document.getElementById('hist-gen-count').textContent = genEntries.length
             ? '(' + genEntries.length + ')'
@@ -350,9 +423,14 @@
         document.getElementById('hist-rev-count').textContent = revEntries.length
             ? '(' + revEntries.length + ')'
             : '';
+        var sumCountEl = document.getElementById('hist-sum-count');
+        if (sumCountEl) {
+            sumCountEl.textContent = sumEntries.length ? '(' + sumEntries.length + ')' : '';
+        }
 
         renderHistoryList(genContainer, genEntries, 'generated');
         renderHistoryList(revContainer, revEntries, 'reviewed');
+        if (sumContainer) renderHistoryList(sumContainer, sumEntries, 'summarised');
     }
 
     /* ─────────────────────────────────────────────
@@ -382,6 +460,16 @@
             });
         }
 
+        var clearSumBtn = document.getElementById('hist-clear-sum');
+        if (clearSumBtn) {
+            clearSumBtn.addEventListener('click', function () {
+                if (confirm('Clear all test case summary history?')) {
+                    localStorage.removeItem(SUM_KEY);
+                    renderHistory();
+                }
+            });
+        }
+
         // Modal close
         var closeBtn    = document.getElementById('hist-modal-close');
         var overlay     = document.getElementById('hist-modal-overlay');
@@ -395,7 +483,7 @@
             });
         }
 
-        // Listen for history updates from generator (same page)
+        // Listen for history updates from generator / summary (same page)
         window.addEventListener('tca-history-updated', function () { renderHistory(); });
 
         // Listen for history updates from reviewer iframe

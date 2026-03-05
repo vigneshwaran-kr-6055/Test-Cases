@@ -33,6 +33,7 @@
 <nav class="tab-nav" role="tablist">
     <button class="tab-btn active" id="tab-reviewer"  role="tab" aria-selected="true"  aria-controls="section-review">🔍 Test Case Reviewer</button>
     <button class="tab-btn"        id="tab-generator" role="tab" aria-selected="false" aria-controls="section-generator">⚡ Test Case Generator</button>
+    <button class="tab-btn"        id="tab-summary"   role="tab" aria-selected="false" aria-controls="section-summary">📋 Test Case Summary</button>
     <button class="tab-btn"        id="tab-history"   role="tab" aria-selected="false" aria-controls="section-history">🕑 History</button>
 </nav>
 
@@ -155,7 +156,68 @@
     </div><!-- /.gen-wrap -->
 </div><!-- /#section-generator -->
 
-<!-- ── Section 3: History ── -->
+<!-- ── Section 3: Test Case Summary ── -->
+<div id="section-summary" role="tabpanel" aria-labelledby="tab-summary" hidden>
+    <div class="sum-wrap">
+
+        <!-- Upload + Model Selection Card -->
+        <div class="upload-card">
+            <h2>Summarise Your Test Cases with AI</h2>
+            <p>Upload a test case spreadsheet (<strong>.xlsx</strong> or <strong>.csv</strong>), choose an AI model, and get a clear,
+               concise summary of your entire test suite — organised by use case, with statistics, coverage insights, and key observations.</p>
+
+            <div class="drop-zone" id="sum-drop-zone">
+                <input type="file" id="sum-file-input" accept=".xlsx,.csv" aria-label="Upload test case file">
+                <span class="icon">📂</span>
+                <div class="label" id="sum-drop-label">Drag &amp; drop your file here, or click to browse</div>
+                <div class="hint"  id="sum-drop-hint">.xlsx · .csv</div>
+            </div>
+
+            <!-- AI Model selector -->
+            <div class="sum-model-row">
+                <label class="sum-model-label" for="sum-ai-model">Choose AI Model:</label>
+                <select class="sum-model-select" id="sum-ai-model">
+                    <option value="builtin">🔧 Built-in Analysis (No API key required)</option>
+                    <option value="openai">🤖 OpenAI GPT-4o</option>
+                    <option value="gemini">✨ Google Gemini 1.5 Pro</option>
+                </select>
+            </div>
+
+            <!-- API key input (hidden for built-in) -->
+            <div class="sum-apikey-row" id="sum-api-key-row" hidden>
+                <label class="sum-model-label" for="sum-api-key">API Key:</label>
+                <input type="password" class="sum-apikey-input" id="sum-api-key"
+                       placeholder="Paste your API key here — it is never stored or transmitted except to the chosen model's API">
+            </div>
+
+            <button class="btn-summarise" id="btn-summarise" disabled>📋 Summarise Test Cases</button>
+        </div>
+
+        <!-- Status bar -->
+        <div id="sum-status" role="status" aria-live="polite"></div>
+
+        <!-- Stats section -->
+        <div class="section-card" id="sum-sec-stats">
+            <h2>📊 Overview Statistics</h2>
+            <div id="sum-stats-body"></div>
+        </div>
+
+        <!-- AI Summary section -->
+        <div class="section-card" id="sum-sec-summary">
+            <h2 id="sum-summary-title">🤖 AI Summary</h2>
+            <div id="sum-content" class="sum-content-body"></div>
+        </div>
+
+        <!-- Use case breakdown section -->
+        <div class="section-card" id="sum-sec-usecase">
+            <h2>📋 Use Case Breakdown</h2>
+            <div id="sum-usecase-body"></div>
+        </div>
+
+    </div><!-- /.sum-wrap -->
+</div><!-- /#section-summary -->
+
+<!-- ── Section 4: History ── -->
 <div id="section-history" role="tabpanel" aria-labelledby="tab-history" hidden>
     <div class="hist-wrap">
 
@@ -177,6 +239,15 @@
             <div id="hist-rev-list" class="hist-list"></div>
         </div>
 
+        <!-- Test Case Summary History -->
+        <div class="hist-panel">
+            <div class="hist-panel-header">
+                <h2>📋 Test Case Summary History <span id="hist-sum-count" class="hist-count-badge"></span></h2>
+                <button class="hist-clear-btn" id="hist-clear-sum" aria-label="Clear summary history">🗑 Clear All</button>
+            </div>
+            <div id="hist-sum-list" class="hist-list"></div>
+        </div>
+
     </div><!-- /.hist-wrap -->
 </div><!-- /#section-history -->
 
@@ -192,6 +263,7 @@
 </div>
 
 <script src="test-case-generator.js"></script>
+<script src="test-case-summary.js"></script>
 <script src="history.js"></script>
 <script>
 (function () {
