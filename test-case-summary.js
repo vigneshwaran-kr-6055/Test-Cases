@@ -163,6 +163,42 @@ var SUM_STOP_WORDS = new Set([
     'test','tests','case','cases','that','where','which','there','then',
 ]);
 
+/**
+ * Extract the most-frequent domain-meaningful keywords from an array of text strings.
+ * Used as a universal fallback description for scenarios that do not match any of the
+ * predefined theme patterns — works for any feature domain without hard-coded terms.
+ *
+ * Words in SUM_STOP_WORDS plus the additional QA-process stop-words below are excluded.
+ * A word must appear in at least 2 scenarios to qualify (prevents single-mention noise).
+ *
+ * @param {string[]} texts    - Scenario / test-case text strings to analyse.
+ * @param {number}   maxWords - Maximum distinct keywords to return.
+ * @returns {string[]} Capitalised domain keywords sorted by descending frequency.
+ */
+function extractTopKeywords(texts, maxWords) {
+    var qaStop = new Set([
+        'able','cannot','must','given','then','when',
+        'click','select','enter','type','open','close',
+        'submit','save','cancel','back','next','done',
+        'true','false','null','none','with','without',
+        'workflow','scenario','confirm','valid',
+    ]);
+    var freq = {};
+    texts.forEach(function (t) {
+        (t.match(new RegExp('[a-zA-Z]{' + SUM_MIN_WORD_LENGTH + ',}', 'g')) || []).forEach(function (w) {
+            var lw = w.toLowerCase();
+            if (!SUM_STOP_WORDS.has(lw) && !qaStop.has(lw)) {
+                freq[lw] = (freq[lw] || 0) + 1;
+            }
+        });
+    });
+    return Object.keys(freq)
+        .filter(function (w) { return freq[w] >= SUM_MIN_KEYWORD_FREQ; })
+        .sort(function (a, b) { return freq[b] - freq[a]; })
+        .slice(0, maxWords)
+        .map(capFirst);
+}
+
 /* ─────────────────────────────────────────────
    Theme patterns used to auto-classify scenarios
    that have no named use-case / feature assigned.
@@ -358,6 +394,12 @@ function themeCapability(key, scenarios) {
             return 'Performance and load testing.';
         case 'misc':
         default:
+            /* First try keyword extraction — works for any feature domain */
+            var topKws = extractTopKeywords(scenarios, 4);
+            if (topKws.length >= 1) {
+                return topKws.join(', ') + '.';
+            }
+            /* Final hard-coded fallbacks for a small set of known misc patterns */
             var mParts = [];
             if (has(/mount/i))                mParts.push('simultaneous mounting');
             if (has(/maximum|limit|\b20\b/i)) mParts.push('item/folder limits');
@@ -412,13 +454,25 @@ function useCasesToCapabilities(ucList, ucCounts, maxCaps) {
 function builtInSummarise(rows, cols, stats) {
     var groups = groupByUseCase(rows, cols);
 
-    /* Collect all unique scenario names across every use-case group */
+    /* Collect all unique scenario texts across every use-case group.
+     * Primary source: test-case name / title (cols.testCase, cols.testCaseId).
+     * Fallback: when those columns are absent or contain only bare IDs (e.g. "TC001"),
+     * also pull in text from the steps or expected-result columns so that theme-based
+     * keyword analysis has meaningful content to work with on any file format. */
     var allScenarios = [];
     groups.forEach(function (ucRows) {
         ucRows.forEach(function (r) {
             var name = (cols.testCase   ? String(r[cols.testCase]   || '') : '').trim()
                     || (cols.testCaseId ? String(r[cols.testCaseId] || '') : '').trim();
-            if (name && allScenarios.indexOf(name) === -1) allScenarios.push(name);
+            /* If the name looks like a bare ID (e.g. "TC001", "1", "R-42"), supplement
+             * with richer descriptive text from other columns. */
+            var isIdOnly = !name || SUM_ID_PATTERN.test(name);
+            var text = isIdOnly
+                ? ((cols.steps          ? String(r[cols.steps]          || '') : '').trim().slice(0, SUM_MAX_FALLBACK_TEXT)
+                || (cols.expectedResult ? String(r[cols.expectedResult] || '') : '').trim().slice(0, SUM_MAX_FALLBACK_TEXT)
+                || name)
+                : name;
+            if (text && allScenarios.indexOf(text) === -1) allScenarios.push(text);
         });
     });
 
@@ -458,10 +512,25 @@ function builtInSummarise(rows, cols, stats) {
         });
     }
 
-    /* Build a single intro sentence */
+    /* Build a single intro sentence.
+     * Priority order:
+     *  1. 1 named use-case area  → name it explicitly (most reliable for single-area files).
+     *  2. 2 named use-case areas → name both (more reliable than a keyword guess).
+     *  3. Detected subject keyword (any # of named areas or no use-case column).
+     *  4. Count of named areas with a sample list.
+     *  5. Generic scenario count fallback. */
     var ucListFull = stats.useCases;
     var intro;
-    if (subject) {
+    if (ucList.length === 1) {
+        intro = '<strong>' + escSum(ucList[0]) + '</strong> feature validated across ' +
+                '<strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>' +
+                (capabilities.length > 0 ? ' — key capabilities below.' : '.');
+    } else if (ucList.length === 2) {
+        intro = '<strong>' + escSum(ucList[0]) + '</strong> and <strong>' + escSum(ucList[1]) +
+                '</strong> validated across ' +
+                '<strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>' +
+                (capabilities.length > 0 ? ' — key capabilities below.' : '.');
+    } else if (subject) {
         intro = '<strong>' + escSum(subject) + '</strong> feature validated across ' +
                 '<strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>' +
                 (capabilities.length > 0 ? ' — key capabilities below.' : '.');
@@ -629,6 +698,15 @@ var SUM_MIN_ACRONYM_FREQ = 2;
 
 /** Minimum word length for noun extraction (excludes short prepositions, articles). */
 var SUM_MIN_WORD_LENGTH = 4;
+
+/** Minimum frequency (occurrences across scenarios) for a keyword to be surfaced. */
+var SUM_MIN_KEYWORD_FREQ = 2;
+
+/** Max characters taken from steps/expectedResult when testCase is a bare ID. */
+var SUM_MAX_FALLBACK_TEXT = 200;
+
+/** Regex that identifies a bare test-case ID (e.g. "TC001", "R-42", "1") vs a real title. */
+var SUM_ID_PATTERN = /^[A-Za-z]{0,5}[-_]?\d+$/;
 
 /* ─────────────────────────────────────────────
    History helpers
