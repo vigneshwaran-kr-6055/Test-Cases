@@ -508,7 +508,9 @@ function builtInSummarise(rows, cols, stats) {
     }
 
     /* Collect named feature areas and their test-case counts */
-    var ucList = stats.useCases.filter(function (uc) { return uc && uc !== '(No Use Case)'; });
+    var ucList = stats.useCases.filter(function (uc) {
+        return uc && uc !== '(No Use Case)' && !SUM_GENERIC_UC_TERMS.has(uc.trim().toLowerCase());
+    });
     var ucCounts = {};
     if (cols.useCase) {
         rows.forEach(function (row) {
@@ -739,6 +741,17 @@ var SUM_MAX_FALLBACK_TEXT = 200;
 
 /** Regex that identifies a bare test-case ID (e.g. "TC001", "R-42", "1") vs a real title. */
 var SUM_ID_PATTERN = /^[A-Za-z]{0,5}[-_]?\d+$/;
+
+/**
+ * Lowercase use-case labels that are too generic to be useful as capability bullets.
+ * Any use-case whose trimmed, lowercased value matches one of these strings is
+ * excluded from the named-feature-area list and from the intro sentence.
+ */
+var SUM_GENERIC_UC_TERMS = new Set([
+    'others', 'other', 'misc', 'miscellaneous', 'general', 'general functionality',
+    'general features', 'tbd', 'n/a', 'na', 'none', 'unknown', 'uncategorized',
+    'uncategorised', 'unclassified', 'various', 'undefined',
+]);
 
 /* ─────────────────────────────────────────────
    History helpers
