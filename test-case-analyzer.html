@@ -23,7 +23,7 @@
         <h2>Upload your test case spreadsheet</h2>
         <p>Supports <strong>.xlsx</strong> and <strong>.csv</strong> files.
            The tool reads your test cases, understands the feature flow, and highlights missing
-           <em>functional</em>, <em>privacy</em>, and <em>security</em> test cases.</p>
+           <em>functional</em>, <em>privacy</em>, <em>security</em>, and <em>performance</em> test cases.</p>
 
         <div class="drop-zone" id="drop-zone">
             <input type="file" id="file-input" accept=".xlsx,.csv" aria-label="Upload test case file">
@@ -56,17 +56,21 @@
                 <div class="num" id="stat-features">0</div>
                 <div class="lbl">Features / modules detected</div>
             </div>
-            <div class="stat-chip" style="border-top: 3px solid #e53935;">
+            <div class="stat-chip stat-chip--link" style="border-top: 3px solid #e53935;" data-target="sec-functional" role="button" tabindex="0" aria-label="Jump to Functional Test Gaps section">
                 <div class="num" id="stat-fn-miss" style="color:#e53935;">0</div>
-                <div class="lbl">Functional gaps</div>
+                <div class="lbl">Functional gaps ↓</div>
             </div>
-            <div class="stat-chip" style="border-top: 3px solid #fb8c00;">
+            <div class="stat-chip stat-chip--link" style="border-top: 3px solid #fb8c00;" data-target="sec-privacy" role="button" tabindex="0" aria-label="Jump to Privacy Test Gaps section">
                 <div class="num" id="stat-pr-miss" style="color:#fb8c00;">0</div>
-                <div class="lbl">Privacy gaps</div>
+                <div class="lbl">Privacy gaps ↓</div>
             </div>
-            <div class="stat-chip" style="border-top: 3px solid #8e24aa;">
+            <div class="stat-chip stat-chip--link" style="border-top: 3px solid #8e24aa;" data-target="sec-security" role="button" tabindex="0" aria-label="Jump to Security Test Gaps section">
                 <div class="num" id="stat-sec-miss" style="color:#8e24aa;">0</div>
-                <div class="lbl">Security gaps</div>
+                <div class="lbl">Security gaps ↓</div>
+            </div>
+            <div class="stat-chip stat-chip--link" style="border-top: 3px solid #00897b;" data-target="sec-performance" role="button" tabindex="0" aria-label="Jump to Performance Test Gaps section">
+                <div class="num" id="stat-perf-miss" style="color:#00897b;">0</div>
+                <div class="lbl">Performance gaps ↓</div>
             </div>
         </div>
     </div>
@@ -92,6 +96,12 @@
     <!-- Security Gaps -->
     <div class="section-card" id="sec-security">
         <h2>🛡 Security Test Gaps</h2>
+        <div class="gap-body"></div>
+    </div>
+
+    <!-- Performance Gaps -->
+    <div class="section-card" id="sec-performance">
+        <h2>⚡ Performance Test Gaps</h2>
         <div class="gap-body"></div>
     </div>
 
