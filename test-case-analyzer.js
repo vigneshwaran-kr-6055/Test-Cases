@@ -595,7 +595,40 @@ function analyzeTestCases(rows) {
     const secPerformance    = document.getElementById('sec-performance');
     const secTable          = document.getElementById('sec-table');
 
-    let parsedRows = null;
+    let parsedRows      = null;
+    let currentFileName = '';
+
+    /* ── History helpers ── */
+    const HISTORY_KEY = 'tca_rev_history';
+    const HISTORY_MAX = 20;
+
+    function saveToRevHistory(fileName, result) {
+        let history = [];
+        try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch (e) { history = []; }
+        const entry = {
+            id:             Date.now(),
+            fileName:       fileName,
+            timestamp:      new Date().toISOString(),
+            totalRows:      result.totalRows,
+            features:       result.features,
+            featureSummary: result.featureSummary,
+            functional:     result.functional,
+            privacy:        result.privacy,
+            security:       result.security,
+            performance:    result.performance,
+            headers:        result.headers,
+            rows:           result.rows.slice(0, 200),
+        };
+        history.unshift(entry);
+        if (history.length > HISTORY_MAX) history = history.slice(0, HISTORY_MAX);
+        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch (e) {
+            while (history.length > 1) {
+                history.pop();
+                try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); break; } catch (e2) { /* continue */ }
+            }
+        }
+        try { window.parent.postMessage({ type: 'tca-history-updated' }, window.location.origin); } catch (e) {}
+    }
 
     /* ── File selection helpers ── */
     function setStatus(msg, type) {
@@ -651,6 +684,7 @@ function analyzeTestCases(rows) {
         document.getElementById('drop-hint').textContent   = (file.size / 1024).toFixed(1) + ' KB';
         setStatus('File ready. Click "Analyse Test Cases" to start.', 'info');
         btnAnalyze.disabled = false;
+        currentFileName = file.name;
         parsedRows = null; // reset previous parse
         clearResults();
 
@@ -750,6 +784,7 @@ function analyzeTestCases(rows) {
         if (result.error) { setStatus('⚠ ' + result.error, 'error'); return; }
         renderResults(result);
         setStatus(`✔ Analysis complete — ${result.totalRows} test cases analysed.`, 'success');
+        saveToRevHistory(currentFileName || 'unknown', result);
     });
 
     /* ── Render helpers ── */
