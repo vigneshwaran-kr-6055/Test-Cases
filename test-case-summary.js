@@ -245,11 +245,11 @@ function detectSumSubject(scenarios) {
         });
     });
     var topAcr = Object.keys(aFreq).sort(function (a, b) { return aFreq[b] - aFreq[a]; })[0];
-    if (topAcr && aFreq[topAcr] >= 2) return topAcr;
+    if (topAcr && aFreq[topAcr] >= SUM_MIN_ACRONYM_FREQ) return topAcr;
 
     var wFreq = {};
     scenarios.forEach(function (s) {
-        (s.match(/[a-zA-Z]{4,}/g) || []).forEach(function (w) {
+        (s.match(new RegExp('[a-zA-Z]{' + SUM_MIN_WORD_LENGTH + ',}', 'g')) || []).forEach(function (w) {
             var lw = w.toLowerCase();
             if (!SUM_STOP_WORDS.has(lw)) wFreq[lw] = (wFreq[lw] || 0) + 1;
         });
@@ -392,7 +392,7 @@ function builtInSummarise(rows, cols, stats) {
     var themeGroups = groupScenariosByTheme(allScenarios);
 
     var capabilities = [];
-    themeGroups.slice(0, 6).forEach(function (g) {
+    themeGroups.slice(0, SUM_MAX_CAPABILITIES).forEach(function (g) {
         var cap = themeCapability(g.key, g.list);
         if (cap) capabilities.push(cap);
     });
@@ -406,7 +406,7 @@ function builtInSummarise(rows, cols, stats) {
                 (themeGroups.length > 0 ? ' — key capabilities below.' : '.');
     } else if (ucList.length > 0) {
         intro = 'Covers <strong>' + ucList.length + ' feature area' + (ucList.length !== 1 ? 's' : '') + '</strong>: ' +
-                ucList.slice(0, 3).map(escSum).join(', ') + (ucList.length > 3 ? ', and more' : '') + '.';
+                ucList.slice(0, SUM_MAX_USE_CASES_SHOWN).map(escSum).join(', ') + (ucList.length > SUM_MAX_USE_CASES_SHOWN ? ', and more' : '') + '.';
     } else {
         intro = 'Test suite covers <strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>.';
     }
@@ -556,6 +556,18 @@ var AI_TEMPERATURE = 0.3;
 
 /** Max representative scenarios shown per feature block (named or themed). */
 var SUM_MAX_SCENARIOS_SHOWN = 5;
+
+/** Max capability bullets shown in the built-in user-story narrative. */
+var SUM_MAX_CAPABILITIES = 6;
+
+/** Max use-case names shown in the intro when a use-case column is present. */
+var SUM_MAX_USE_CASES_SHOWN = 3;
+
+/** Minimum frequency for an acronym to be treated as the suite's main subject. */
+var SUM_MIN_ACRONYM_FREQ = 2;
+
+/** Minimum word length for noun extraction (excludes short prepositions, articles). */
+var SUM_MIN_WORD_LENGTH = 4;
 
 /* ─────────────────────────────────────────────
    History helpers
