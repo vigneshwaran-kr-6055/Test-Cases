@@ -504,8 +504,7 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
         }
         document.getElementById('sum-drop-label').textContent = '📄 ' + file.name;
         document.getElementById('sum-drop-hint').textContent  = (file.size / 1024).toFixed(1) + ' KB';
-        setStatus('File ready. Click "Summarise Test Cases" to continue.', 'info');
-        btnSummarise.disabled = false;
+        btnSummarise.disabled = true;
         currentFileName = file.name;
         parsedRows = null;
         clearResults();
@@ -527,34 +526,48 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
                         return;
                     }
                     parsedRows = rows;
-                    setStatus('✔ Parsed ' + rows.length + ' rows. Click "Summarise Test Cases".', 'success');
                     btnSummarise.disabled = false;
+                    doSummarise();
                 } catch (err) {
                     setStatus('⚠ Could not parse CSV: ' + err.message, 'error');
                     btnSummarise.disabled = true;
                 }
             };
+            reader.onerror = function () {
+                setStatus('⚠ Could not read file. Please try again.', 'error');
+                btnSummarise.disabled = true;
+            };
             reader.readAsText(file);
         } else {
-            readXlsxFile(file).then(function (rawRows) {
-                var rows = sumRowsToObjects(rawRows);
-                if (!rows.length) {
-                    setStatus('⚠ The spreadsheet appears to be empty or has only a header row.', 'error');
-                    btnSummarise.disabled = true;
-                    return;
-                }
-                parsedRows = rows;
-                setStatus('✔ Parsed ' + rows.length + ' rows. Click "Summarise Test Cases".', 'success');
-                btnSummarise.disabled = false;
-            }).catch(function (err) {
-                setStatus('⚠ Could not parse file: ' + err.message, 'error');
+            if (typeof readXlsxFile === 'undefined') {
+                setStatus('⚠ XLSX library not loaded. Please refresh the page.', 'error');
                 btnSummarise.disabled = true;
-            });
+                return;
+            }
+            try {
+                readXlsxFile(file).then(function (rawRows) {
+                    var rows = sumRowsToObjects(rawRows);
+                    if (!rows.length) {
+                        setStatus('⚠ The spreadsheet appears to be empty or has only a header row.', 'error');
+                        btnSummarise.disabled = true;
+                        return;
+                    }
+                    parsedRows = rows;
+                    btnSummarise.disabled = false;
+                    doSummarise();
+                }).catch(function (err) {
+                    setStatus('⚠ Could not parse file: ' + (err && err.message ? err.message : String(err)), 'error');
+                    btnSummarise.disabled = true;
+                });
+            } catch (err) {
+                setStatus('⚠ Could not read XLSX file: ' + (err && err.message ? err.message : String(err)), 'error');
+                btnSummarise.disabled = true;
+            }
         }
     }
 
-    /* ── Summarise button ── */
-    btnSummarise.addEventListener('click', async function () {
+    /* ── Core summarise logic (auto-triggered on upload and on button click) ── */
+    function doSummarise() {
         if (!parsedRows || parsedRows.length === 0) {
             setStatus('⚠ Please upload a file first.', 'error');
             return;
@@ -576,7 +589,6 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
             renderSumStats(stats, cols);
             renderSumSummary(summaryHtml, modelLabel);
 
-            // Save to history before rendering so the entry is always captured
             var ucBreakdownArr = [];
             var ucGroups = groupByUseCase(parsedRows, cols);
             ucGroups.forEach(function (ucRows, ucName) {
@@ -585,11 +597,21 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
             saveToSumHistory(currentFileName, modelLabel, stats, summaryHtml, ucBreakdownArr);
 
             setStatus('✔ Summary complete.', 'success');
+
+            // Scroll results into view so the user can see them
+            if (secStats) {
+                secStats.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
         } catch (err) {
-            setStatus('⚠ ' + err.message, 'error');
+            setStatus('⚠ ' + (err && err.message ? err.message : String(err)), 'error');
         } finally {
             btnSummarise.disabled = false;
         }
+    }
+
+    /* ── Summarise button (re-runs the summary on demand) ── */
+    btnSummarise.addEventListener('click', function () {
+        doSummarise();
     });
 
     /* ── Render stats section ── */
