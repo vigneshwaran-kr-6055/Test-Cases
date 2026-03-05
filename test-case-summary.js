@@ -368,6 +368,41 @@ function themeCapability(key, scenarios) {
     }
 }
 
+/**
+ * Convert a list of named use-case / feature-area labels into concise capability bullets.
+ * Bullets are sorted by test-case count (most-tested areas first) so the most important
+ * areas appear at the top.  When there are more use-cases than maxCaps, the last bullet
+ * mentions how many additional areas are covered.
+ *
+ * @param {string[]} ucList   - Distinct, non-empty use-case names.
+ * @param {Object}   ucCounts - Map of { useCase: count }.
+ * @param {number}   maxCaps  - Maximum number of bullet strings to return.
+ * @returns {string[]}
+ */
+function useCasesToCapabilities(ucList, ucCounts, maxCaps) {
+    /* Sort: highest test-case count first, then alphabetical for ties */
+    var sorted = ucList.slice().sort(function (a, b) {
+        var diff = (ucCounts[b] || 0) - (ucCounts[a] || 0);
+        return diff !== 0 ? diff : a.localeCompare(b);
+    });
+
+    var shown    = sorted.slice(0, maxCaps);
+    var overflow = sorted.length - shown.length;
+    var caps     = [];
+
+    shown.forEach(function (uc, i) {
+        var isLast = (i === shown.length - 1);
+        if (isLast && overflow > 0) {
+            caps.push(capFirst(uc) + ' — and ' + overflow +
+                      ' more feature area' + (overflow > 1 ? 's' : '') + '.');
+        } else {
+            caps.push(capFirst(uc) + '.');
+        }
+    });
+
+    return caps;
+}
+
 /* ─────────────────────────────────────────────
    Built-in summarisation engine
    Produces a brief user-story narrative (≤ 15 lines, < 2 min read).
@@ -387,26 +422,52 @@ function builtInSummarise(rows, cols, stats) {
         });
     });
 
-    /* Detect main subject and group into capability areas (max 6) */
-    var subject    = detectSumSubject(allScenarios);
-    var themeGroups = groupScenariosByTheme(allScenarios);
+    /* Detect main subject */
+    var subject = detectSumSubject(allScenarios);
+
+    /* Collect named feature areas and their test-case counts */
+    var ucList = stats.useCases.filter(function (uc) { return uc && uc !== '(No Use Case)'; });
+    var ucCounts = {};
+    if (cols.useCase) {
+        rows.forEach(function (row) {
+            var uc = String(row[cols.useCase] || '').trim();
+            if (uc) ucCounts[uc] = (ucCounts[uc] || 0) + 1;
+        });
+    }
 
     var capabilities = [];
-    themeGroups.slice(0, SUM_MAX_CAPABILITIES).forEach(function (g) {
-        var cap = themeCapability(g.key, g.list);
-        if (cap) capabilities.push(cap);
-    });
+
+    if (ucList.length >= 3) {
+        /*
+         * Strategy 1 — named feature areas (most accurate, content-driven).
+         * The use-case / feature-area column already contains the real capability
+         * names supplied by the author of the test suite.  Surface the top N
+         * areas sorted by test coverage so stakeholders see the most important
+         * areas first.
+         */
+        capabilities = useCasesToCapabilities(ucList, ucCounts, SUM_MAX_CAPABILITIES);
+    } else {
+        /*
+         * Strategy 2 — theme-based keyword analysis (fallback when no named
+         * feature areas are present or too few to be meaningful).
+         */
+        var themeGroups = groupScenariosByTheme(allScenarios);
+        themeGroups.slice(0, SUM_MAX_CAPABILITIES).forEach(function (g) {
+            var cap = themeCapability(g.key, g.list);
+            if (cap) capabilities.push(cap);
+        });
+    }
 
     /* Build a single intro sentence */
-    var ucList = stats.useCases;
+    var ucListFull = stats.useCases;
     var intro;
     if (subject) {
         intro = '<strong>' + escSum(subject) + '</strong> feature validated across ' +
                 '<strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>' +
-                (themeGroups.length > 0 ? ' — key capabilities below.' : '.');
-    } else if (ucList.length > 0) {
-        intro = 'Covers <strong>' + ucList.length + ' feature area' + (ucList.length !== 1 ? 's' : '') + '</strong>: ' +
-                ucList.slice(0, SUM_MAX_USE_CASES_SHOWN).map(escSum).join(', ') + (ucList.length > SUM_MAX_USE_CASES_SHOWN ? ', and more' : '') + '.';
+                (capabilities.length > 0 ? ' — key capabilities below.' : '.');
+    } else if (ucListFull.length > 0) {
+        intro = 'Covers <strong>' + ucListFull.length + ' feature area' + (ucListFull.length !== 1 ? 's' : '') + '</strong>: ' +
+                ucListFull.slice(0, SUM_MAX_USE_CASES_SHOWN).map(escSum).join(', ') + (ucListFull.length > SUM_MAX_USE_CASES_SHOWN ? ', and more' : '') + '.';
     } else {
         intro = 'Test suite covers <strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>.';
     }
