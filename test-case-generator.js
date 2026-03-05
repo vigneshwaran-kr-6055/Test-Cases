@@ -107,22 +107,17 @@ const TEMPLATES = [
     // 1. Happy / positive path — always generated
     {
         id: 'happy-path',
-        generate(ucText, ucRef, feature) {
+        generate(ucText, ucRef, feature, ctx) {
+            const { action, entity, actor, module } = ctx || {};
             return [{
                 ucRef,
                 title: `Verify successful ${feature} with valid inputs`,
                 description: [
                     `Verify that the ${feature} completes successfully end-to-end.`,
                     'All required input fields are filled with valid data.',
-                    'The user has the appropriate permissions to perform the action.',
+                    `The ${actor || 'user'} has the appropriate permissions to perform the action.`,
                 ],
-                steps: [
-                    'Log in with a valid user account that has the required permissions.',
-                    `Navigate to the ${feature} screen/functionality.`,
-                    'Fill in all required fields with valid, correctly formatted data.',
-                    'Submit or confirm the action.',
-                    'Observe the system response.',
-                ],
+                steps: buildActionSpecificSteps(action, entity, module, feature, actor),
                 expectedResult: `The ${feature} completes successfully and the system confirms the action with an appropriate success message or state change.`,
                 severity: detectSeverity(ucText),
                 type: 'functional',
@@ -133,7 +128,8 @@ const TEMPLATES = [
     // 2. Negative / invalid input path — always generated
     {
         id: 'negative-path',
-        generate(ucText, ucRef, feature) {
+        generate(ucText, ucRef, feature, ctx) {
+            const { action, entity, actor, module } = ctx || {};
             return [{
                 ucRef,
                 title: `Verify error handling for invalid inputs in ${feature}`,
@@ -142,12 +138,7 @@ const TEMPLATES = [
                     'The system must not proceed or corrupt data on bad input.',
                     'A clear, user-friendly error message must be displayed.',
                 ],
-                steps: [
-                    'Navigate to the relevant screen for the feature.',
-                    'Leave required fields empty or enter invalid/malformed data.',
-                    'Attempt to submit or perform the action.',
-                    'Observe the system response and any displayed messages.',
-                ],
+                steps: buildNegativePathSteps(action, entity, module, feature, actor),
                 expectedResult: `The system displays a clear, descriptive error message, highlights the problematic field(s), and does not process or save any data.`,
                 severity: 'major',
                 type: 'functional',
@@ -307,23 +298,375 @@ function detectSeverity(text) {
 
 /**
  * Extract a short feature label from the use-case text.
- * Prefers "As a … I want to …" style; falls back to first 6 words.
+ * Handles "As a … I want to …", direct titles, ability-to patterns, and more.
  */
 function extractFeature(text) {
-    // "I want to [verb phrase]" pattern
+    // "I want to [verb phrase]"
     const m = text.match(/i want to\s+([^,.;!?\n]+)/i);
     if (m) return truncateWords(m[1].trim(), 60);
 
-    // "should be able to [verb phrase]"
-    const m2 = text.match(/should be able to\s+([^,.;!?\n]+)/i);
-    if (m2) return truncateWords(m2[1].trim(), 60);
+    // "As a [actor], I [want/need/can/must/should] to [verb phrase]"
+    const userStoryMatch = text.match(/as\s+(?:a|an)\s+[^,]+,\s*i\s+(?:want|need|can|must|should)\s+to\s+([^,.;!?\n]+)/i);
+    if (userStoryMatch) return truncateWords(userStoryMatch[1].trim(), 60);
 
-    // "Use Case: [title]"
-    const m3 = text.match(/use case\s*\d*\s*[:\-–]\s*(.+)/i);
-    if (m3) return truncateWords(m3[1].trim(), 60);
+    // "should be able to [verb phrase]"
+    const ableToMatch = text.match(/should be able to\s+([^,.;!?\n]+)/i);
+    if (ableToMatch) return truncateWords(ableToMatch[1].trim(), 60);
+
+    // "Use Case: [title]" or "Feature: [title]" or "Title: [value]"
+    const labeledTitleMatch = text.match(/(?:use\s*case|feature|title)\s*\d*\s*[:\-–]\s*(.+)/i);
+    if (labeledTitleMatch) return truncateWords(labeledTitleMatch[1].trim(), 60);
+
+    // "[user/admin/…] can/should/must/shall/wants to [verb phrase]"
+    const actorActionMatch = text.match(/(?:user|admin|customer|actor|member|operator)\s+(?:can|should|must|shall|wants?\s+to|needs?\s+to)\s+([^,.;!?\n]+)/i);
+    if (actorActionMatch) return truncateWords(actorActionMatch[1].trim(), 60);
+
+    // "ability to [verb phrase]"
+    const abilityToMatch = text.match(/ability\s+to\s+([^,.;!?\n]+)/i);
+    if (abilityToMatch) return truncateWords(abilityToMatch[1].trim(), 60);
+
+    // Short capitalised phrase at the start (likely a spreadsheet title cell)
+    const titlePhraseMatch = text.match(/^([A-Z][A-Za-z0-9 \-/]{2,59})(?:\n|\.|\s{2,}|$)/);
+    if (titlePhraseMatch && titlePhraseMatch[1].trim().split(/\s+/).length <= 8) return titlePhraseMatch[1].trim();
 
     // Fall back to first few meaningful words
     return truncateWords(text.replace(/[^\w\s]/g, ' '), 60);
+}
+
+/**
+ * Extract structured context (action verb, entity, actor, module) from a use-case text.
+ * Used to produce more specific, relevant test case steps.
+ *
+ * @param {string} text
+ * @returns {{ action: string, entity: string, actor: string, module: string }}
+ */
+function extractUseCaseContext(text) {
+    const lower = text.toLowerCase();
+
+    // ── Actor ──
+    let actor = 'user';
+    const actorMatch =
+        text.match(/^as\s+(?:a|an)\s+([a-z][a-z ]{1,25}?)\s*[,;]/i) ||
+        text.match(/\b(admin(?:istrator)?|manager|customer|member|guest|operator|staff|reviewer|approver|editor|viewer|owner)\b/i);
+    if (actorMatch) actor = actorMatch[1].trim().toLowerCase();
+
+    // ── Action verb (ordered from most-specific to generic) ──
+    const ACTION_VERBS = [
+        'sign up', 'log in', 'log out', 'sign in', 'sign out', 'check out', 'check in',
+        'create', 'add', 'register', 'upload', 'import',
+        'update', 'edit', 'modify', 'change', 'rename',
+        'delete', 'remove', 'cancel', 'deactivate', 'disable',
+        'download', 'export', 'generate', 'print',
+        'search', 'filter', 'find', 'sort', 'browse',
+        'view', 'display', 'read', 'list', 'preview',
+        'submit', 'save', 'confirm', 'send',
+        'approve', 'reject', 'review', 'comment',
+        'share', 'invite', 'assign', 'manage', 'configure',
+        'reset', 'restore', 'recover',
+        'pay', 'purchase', 'checkout',
+        'verify', 'validate', 'authenticate',
+        'enable', 'activate',
+        'access', 'navigate',
+        'login', 'logout',
+    ];
+
+    let action = '';
+    for (const verb of ACTION_VERBS) {
+        const escaped = verb.replace(/[-\s]/g, '[\\s\\-]?');
+        if (new RegExp(`\\b${escaped}\\b`, 'i').test(lower)) {
+            action = verb;
+            break;
+        }
+    }
+
+    // ── Entity (noun phrase after the action verb) ──
+    // Skip entity extraction for auth/session actions that don't have a meaningful object
+    const NO_ENTITY_ACTIONS = new Set(['login', 'logout', 'log in', 'log out', 'sign in', 'sign out', 'register', 'sign up']);
+    let entity = '';
+    if (action && !NO_ENTITY_ACTIONS.has(action)) {
+        const escaped = action.replace(/[-\s]/g, '[\\s\\-]?');
+        const entityRegex = new RegExp(
+            `\\b${escaped}\\s+(?:a|an|the|new|existing|their|my|all|for|with)?\\s*([a-zA-Z][a-zA-Z \\-]{1,35}?)` +
+            `(?=\\s+(?:with|by|using|from|in|on|to|for|and|that|which)|[,\\.;!?]|$)`,
+            'i'
+        );
+        const entityMatch = text.match(entityRegex);
+        if (entityMatch) {
+            entity = entityMatch[1].trim().replace(/\s+/g, ' ').split(/\s+/).slice(0, 4).join(' ');
+        }
+    }
+
+    // ── Module / screen ──
+    let module = '';
+    const modulePats = [
+        /(?:in|on|within|at)\s+(?:the\s+)?([A-Z][A-Za-z ]{2,30}?)\s+(?:section|page|screen|module|tab|panel|dashboard|portal|form|view)\b/i,
+        /(?:navigate|go)\s+to\s+(?:the\s+)?([A-Za-z ]{2,30}?)\s+(?:section|page|screen|module|tab|panel|dashboard|portal|form|view)\b/i,
+    ];
+    for (const pat of modulePats) {
+        const moduleMatch = text.match(pat);
+        if (moduleMatch) { module = moduleMatch[1].trim(); break; }
+    }
+
+    return { action, entity, actor, module };
+}
+
+/**
+ * Generate action-specific happy-path test steps based on extracted context.
+ *
+ * @param {string} action  - Primary action verb (e.g. "create", "login")
+ * @param {string} entity  - Subject entity (e.g. "order", "user account")
+ * @param {string} module  - UI module/section (e.g. "Settings")
+ * @param {string} feature - Fallback feature label
+ * @param {string} actor   - Role performing the action (e.g. "admin")
+ * @returns {string[]}
+ */
+function buildActionSpecificSteps(action, entity, module, feature, actor) {
+    const subject    = entity  || feature || 'item';
+    const navTarget  = module  ? `the ${module} section` : `the ${subject} screen`;
+    const actorLabel = actor   || 'user';
+    const a          = (action || '').toLowerCase();
+
+    if (/^(login|log in|sign in)$/.test(a)) {
+        return [
+            'Navigate to the application login page.',
+            'Enter a valid username or email address.',
+            'Enter the correct password.',
+            "Click the 'Login' / 'Sign In' button.",
+            'Verify successful authentication and redirection to the expected home/dashboard page.',
+        ];
+    }
+    if (/^(logout|log out|sign out)$/.test(a)) {
+        return [
+            'Log in with a valid account.',
+            'Navigate to the user menu or profile section.',
+            "Click the 'Logout' / 'Sign Out' button.",
+            'Verify the session is ended and the user is redirected to the login page.',
+        ];
+    }
+    if (/^(register|sign up)$/.test(a)) {
+        return [
+            'Navigate to the registration / sign-up page.',
+            'Fill in all required registration fields (name, email, password, etc.) with valid data.',
+            'Accept terms and conditions if required.',
+            'Submit the registration form.',
+            'Verify the account is created and a confirmation message or verification email is received.',
+        ];
+    }
+    if (/^(create|add)$/.test(a)) {
+        return [
+            `Log in as a ${actorLabel} with the required permissions.`,
+            `Navigate to ${navTarget}.`,
+            `Click the 'New' / 'Create ${subject}' button or equivalent control.`,
+            `Fill in all required fields for the ${subject} with valid, correctly formatted data.`,
+            `Submit / save the ${subject}.`,
+            `Verify the ${subject} is created and appears in the list with the correct details.`,
+        ];
+    }
+    if (/^(update|edit|modify|change|rename)$/.test(a)) {
+        return [
+            `Log in as a ${actorLabel} with the required permissions.`,
+            `Navigate to ${navTarget}.`,
+            `Locate and select an existing ${subject}.`,
+            `Click 'Edit' or equivalent to enter edit mode.`,
+            `Update the required fields with valid new data.`,
+            `Save the changes.`,
+            `Verify the ${subject} displays the updated information correctly.`,
+        ];
+    }
+    if (/^(delete|remove)$/.test(a)) {
+        return [
+            `Log in as a ${actorLabel} with the required permissions.`,
+            `Navigate to ${navTarget}.`,
+            `Select the ${subject} to be deleted.`,
+            `Click 'Delete' / 'Remove' and confirm the action in the confirmation dialog.`,
+            `Verify the ${subject} is removed and no longer appears in the list.`,
+        ];
+    }
+    if (/^(search|find|filter|sort|browse)$/.test(a)) {
+        return [
+            `Log in as a ${actorLabel}.`,
+            `Navigate to ${navTarget}.`,
+            `Enter valid search keywords or apply filter/sort criteria for ${subject}.`,
+            `Submit the search or apply the filter.`,
+            `Verify the results match the entered criteria and are displayed correctly.`,
+        ];
+    }
+    if (/^(upload|import)$/.test(a)) {
+        return [
+            `Log in as a ${actorLabel} with the required permissions.`,
+            `Navigate to ${navTarget}.`,
+            "Click the 'Upload' / 'Import' button.",
+            `Select a valid file in the required format and within the allowed size limit.`,
+            `Confirm the upload / import.`,
+            `Verify the ${subject} is processed successfully and the data is accessible.`,
+        ];
+    }
+    if (/^(download|export)$/.test(a)) {
+        return [
+            `Log in as a ${actorLabel} with the required permissions.`,
+            `Navigate to ${navTarget}.`,
+            `Select the ${subject} to download / export.`,
+            `Click 'Download' / 'Export' and choose the format if applicable.`,
+            `Verify the file downloads with complete and correct data.`,
+        ];
+    }
+    if (/^(pay|purchase|checkout|check out)$/.test(a)) {
+        return [
+            'Add the desired items to the cart.',
+            'Navigate to the checkout / payment page.',
+            'Enter valid shipping and billing information.',
+            'Enter valid payment details (card number, expiry, CVV).',
+            'Confirm the payment.',
+            'Verify the transaction is processed and a confirmation receipt is displayed.',
+        ];
+    }
+    if (/^(approve|review)$/.test(a)) {
+        return [
+            `Log in as a ${actorLabel} with approval rights.`,
+            `Navigate to ${navTarget}.`,
+            `Locate the pending ${subject} awaiting action.`,
+            `Review all relevant details of the ${subject}.`,
+            `Click 'Approve' and confirm.`,
+            `Verify the ${subject} status is updated to 'Approved' and stakeholders are notified.`,
+        ];
+    }
+    if (/^(reject)$/.test(a)) {
+        return [
+            `Log in as a ${actorLabel} with approval rights.`,
+            `Navigate to ${navTarget}.`,
+            `Locate the pending ${subject}.`,
+            `Review the details.`,
+            `Click 'Reject', provide a reason if prompted, and confirm.`,
+            `Verify the ${subject} status is updated to 'Rejected' and stakeholders are notified.`,
+        ];
+    }
+    if (/^(reset|restore|recover)$/.test(a)) {
+        return [
+            `Log in as a ${actorLabel}.`,
+            `Navigate to ${navTarget}.`,
+            `Initiate the ${a} process for the ${subject}.`,
+            `Complete the required verification steps (e.g. confirm identity, enter new value).`,
+            `Submit the ${a} request.`,
+            `Verify the ${subject} is successfully reset/restored to the expected state.`,
+        ];
+    }
+    if (/^(view|display|read|list|preview)$/.test(a)) {
+        return [
+            `Log in as a ${actorLabel} with appropriate access rights.`,
+            `Navigate to ${navTarget}.`,
+            `Locate the ${subject} to view.`,
+            `Open or select the ${subject}.`,
+            `Verify all details are displayed correctly and completely.`,
+        ];
+    }
+    if (/^(send|share|invite)$/.test(a)) {
+        return [
+            `Log in as a ${actorLabel} with the required permissions.`,
+            `Navigate to ${navTarget}.`,
+            `Compose or select the ${subject} to ${a}.`,
+            `Specify the recipient(s) with valid details.`,
+            `Click '${a.charAt(0).toUpperCase() + a.slice(1)}' and confirm.`,
+            `Verify the ${subject} is sent/shared successfully and appears in the relevant history.`,
+        ];
+    }
+
+    // Generic fallback with context
+    return [
+        `Log in as a ${actorLabel} with the required permissions.`,
+        `Navigate to ${navTarget}.`,
+        `Fill in all required fields with valid, correctly formatted data.`,
+        `Submit or confirm the action.`,
+        `Verify the operation completes successfully and the system responds as expected.`,
+    ];
+}
+
+/**
+ * Generate action-specific negative-path test steps.
+ *
+ * @param {string} action
+ * @param {string} entity
+ * @param {string} module
+ * @param {string} feature
+ * @param {string} actor
+ * @returns {string[]}
+ */
+function buildNegativePathSteps(action, entity, module, feature, actor) {
+    const subject   = entity || feature || 'item';
+    const navTarget = module ? `the ${module} section` : `the ${subject} screen`;
+    const a         = (action || '').toLowerCase();
+
+    if (/^(login|log in|sign in)$/.test(a)) {
+        return [
+            'Navigate to the login page.',
+            'Attempt to log in with an incorrect password — verify login is rejected with a clear error.',
+            'Attempt to log in with a non-existent username/email — verify the appropriate error message.',
+            'Submit the form with empty username and password fields — verify validation errors are shown.',
+        ];
+    }
+    if (/^(register|sign up)$/.test(a)) {
+        return [
+            'Navigate to the registration page.',
+            'Attempt to register without filling required fields — verify field-level validation errors.',
+            'Enter an already-registered email address — verify a duplicate account error.',
+            'Enter a password that does not meet the strength requirements — verify the specific error message.',
+        ];
+    }
+    if (/^(create|add)$/.test(a)) {
+        return [
+            `Navigate to ${navTarget}.`,
+            `Attempt to create a ${subject} with all required fields left empty — verify validation errors are shown.`,
+            `Enter invalid data formats (e.g., text in a numeric field, invalid date format) — verify field-level errors.`,
+            `Attempt to create a duplicate ${subject} (if uniqueness is enforced) — verify a duplicate entry error.`,
+        ];
+    }
+    if (/^(update|edit|modify|change)$/.test(a)) {
+        return [
+            `Navigate to ${navTarget} and open an existing ${subject} for editing.`,
+            `Clear all required fields and attempt to save — verify validation errors are shown.`,
+            `Enter out-of-range or invalid-format data in the fields — verify rejection with clear messages.`,
+            `Attempt the update without sufficient permissions — verify access is denied.`,
+        ];
+    }
+    if (/^(delete|remove)$/.test(a)) {
+        return [
+            `Navigate to ${navTarget}.`,
+            `Attempt to delete a ${subject} without the required permissions — verify access is denied.`,
+            `Attempt to delete a ${subject} that is referenced by other records — verify a meaningful constraint error.`,
+            `Cancel the deletion in the confirmation dialog — verify the ${subject} is not deleted.`,
+        ];
+    }
+    if (/^(upload|import)$/.test(a)) {
+        return [
+            `Navigate to ${navTarget}.`,
+            `Attempt to upload a file with an unsupported format — verify rejection with a clear error.`,
+            `Attempt to upload a file exceeding the allowed size limit — verify the size limit error.`,
+            `Upload a malformed or corrupted file — verify the system handles it gracefully and displays an error.`,
+        ];
+    }
+    if (/^(search|find|filter)$/.test(a)) {
+        return [
+            `Navigate to ${navTarget}.`,
+            `Submit a search with an empty query — verify appropriate behaviour (all results or helpful prompt).`,
+            `Enter special characters or injection strings in the search field — verify input is sanitised.`,
+            `Apply filter criteria that match no records — verify a clear 'no results found' message is shown.`,
+        ];
+    }
+    if (/^(pay|purchase|checkout|check out)$/.test(a)) {
+        return [
+            'Navigate to the checkout / payment page.',
+            'Enter an invalid card number — verify the payment is rejected with a clear error.',
+            'Attempt to pay with expired card details — verify expiry validation error.',
+            'Submit the payment form without filling required fields — verify validation messages.',
+        ];
+    }
+
+    // Generic fallback
+    return [
+        `Navigate to ${navTarget}.`,
+        `Leave required fields empty or enter invalid/malformed data.`,
+        `Attempt to submit or perform the action.`,
+        `Verify the system displays clear, descriptive validation errors and does not process invalid data.`,
+    ];
 }
 
 /** Truncate text at a word boundary to at most maxLen characters. */
@@ -366,10 +709,11 @@ function generateTestCases(useCases) {
     useCases.forEach(({ ref, text }) => {
         if (!text || !text.trim()) return;
         const feature = extractFeature(text);
+        const ctx     = extractUseCaseContext(text);
 
         TEMPLATES.forEach(tpl => {
             if (tpl.condition && !tpl.condition(text)) return;
-            const produced = tpl.generate(text, ref, feature);
+            const produced = tpl.generate(text, ref, feature, ctx);
             produced.forEach(tc => {
                 allTCs.push({ id: `TC-${String(tcIndex++).padStart(3, '0')}`, ...tc });
             });
@@ -406,7 +750,8 @@ function parseTxt(text) {
 
 /**
  * Parse a CSV text string into use-case objects.
- * Attempts to detect a "use case" / "description" / "title" column.
+ * Detects "use case", "description", "feature", "acceptance criteria" etc. columns
+ * and combines multiple relevant columns for richer context.
  */
 function parseCsvToUseCases(csvText) {
     const lines = csvText.split(/\r?\n/).filter(l => l.trim());
@@ -430,69 +775,150 @@ function parseCsvToUseCases(csvText) {
         return fields.map(f => f.trim());
     }
 
-    const headers = splitLine(lines[0]).map(h => h.toLowerCase());
-    const rows    = lines.slice(1).map(l => splitLine(l));
+    const headerRaw = splitLine(lines[0]);
+    const headers   = headerRaw.map(h => h.toLowerCase());
+    const rows      = lines.slice(1).map(l => splitLine(l));
 
-    // Detect the ref column
+    // ── Ref / ID column ──
     const refCol = headers.findIndex(h =>
         /use\s*case\s*(id|no|number|#)/i.test(h) || /^(id|uc[-_]?\d*|ref)$/i.test(h)
     );
 
-    // Detect the description/text column (exclude the already-identified refCol)
+    // ── Primary use-case / description column ──
     const txtCol = headers.findIndex((h, idx) => {
         if (idx === refCol) return false;
-        return /description|user\s*story|scenario|requirement/i.test(h) ||
-               /^(title|name)$/i.test(h) ||
-               /use\s*case$/i.test(h);
+        return /use\s*cases?$/i.test(h) ||
+               /description/i.test(h)   ||
+               /user\s*stor/i.test(h)   ||
+               /scenario/i.test(h)      ||
+               /requirement/i.test(h)   ||
+               /feature/i.test(h);
     });
 
-    if (txtCol === -1) {
-        // No recognizable column — treat each row joined (excluding ref) as one use case
+    // ── Supplementary columns ──
+    const suppCols = headers.reduce((acc, h, idx) => {
+        if (idx === refCol || idx === txtCol) return acc;
+        if (/title|name/i.test(h)                                    ||
+            /use\s*cases?$/i.test(h) || /description/i.test(h)       ||
+            /user\s*stor/i.test(h)   || /scenario/i.test(h)          ||
+            /requirement/i.test(h)                                   ||
+            /acceptance\s*criteria|acceptance|criteria/i.test(h)     ||
+            /expected\s*(result|output|behaviour|behavior)/i.test(h) ||
+            /objective|goal|purpose/i.test(h)                        ||
+            /actor|role|persona/i.test(h)                            ||
+            /precondition|pre[-\s]condition|given/i.test(h)) {
+            acc.push({ idx, label: headerRaw[idx] });
+        }
+        return acc;
+    }, []);
+
+    function buildText(row) {
+        const parts = [];
+        if (txtCol !== -1 && row[txtCol]) {
+            parts.push(row[txtCol]);
+        }
+        suppCols.forEach(({ idx, label }) => {
+            const val = row[idx];
+            if (val) parts.push(`${label}: ${val}`);
+        });
+        if (!parts.length) {
+            return row.filter((_, j) => j !== refCol).join(' ');
+        }
+        return parts.join('. ');
+    }
+
+    // No recognisable columns — treat each row joined as one use case
+    if (txtCol === -1 && suppCols.length === 0) {
         return rows.map((row, i) => ({
-            ref: refCol !== -1 && row[refCol] ? row[refCol] : `UC-${String(i + 1).padStart(3, '0')}`,
+            ref:  refCol !== -1 && row[refCol] ? row[refCol] : `UC-${String(i + 1).padStart(3, '0')}`,
             text: row.filter((_, j) => j !== refCol).join(' '),
-        }));
+        })).filter(uc => uc.text.trim());
     }
 
     return rows
-        .filter(row => row[txtCol])
         .map((row, i) => ({
-            ref: refCol !== -1 && row[refCol] ? row[refCol] : `UC-${String(i + 1).padStart(3, '0')}`,
-            text: row[txtCol],
-        }));
+            ref:  refCol !== -1 && row[refCol] ? row[refCol] : `UC-${String(i + 1).padStart(3, '0')}`,
+            text: buildText(row),
+        }))
+        .filter(uc => uc.text.trim());
 }
 
 /**
  * Convert an XLSX array-of-arrays (from read-excel-file) into use-case objects.
+ * Detects a wide range of column names and combines multiple relevant columns
+ * (title, description, acceptance criteria, actor, etc.) for richer context.
  */
 function parseXlsxToUseCases(rawRows) {
     if (!rawRows || rawRows.length < 2) return [];
-    const headers = rawRows[0].map(h => String(h ?? '').toLowerCase());
-    const dataRows = rawRows.slice(1);
+    const headerRaw  = rawRows[0].map(h => String(h ?? '').trim());
+    const headers    = headerRaw.map(h => h.toLowerCase());
+    const dataRows   = rawRows.slice(1);
 
+    // ── Ref / ID column ──
     const refCol = headers.findIndex(h =>
         /use\s*case\s*(id|no|number|#)/i.test(h) || /^(id|uc[-_]?\d*|ref)$/i.test(h)
     );
+
+    // ── Primary use-case / description column ──
     const txtCol = headers.findIndex((h, idx) => {
         if (idx === refCol) return false;
-        return /description|user\s*story|scenario|requirement/i.test(h) ||
-               /^(title|name)$/i.test(h) ||
-               /use\s*case$/i.test(h);
+        return /use\s*cases?$/i.test(h) ||
+               /description/i.test(h)   ||
+               /user\s*stor/i.test(h)   ||
+               /scenario/i.test(h)      ||
+               /requirement/i.test(h)   ||
+               /feature/i.test(h);
     });
 
-    if (txtCol === -1) {
-        return dataRows.map((row, i) => ({
-            ref: refCol !== -1 && row[refCol] ? String(row[refCol]) : `UC-${String(i + 1).padStart(3, '0')}`,
-            text: row.filter((_, j) => j !== refCol).filter(Boolean).join(' '),
-        }));
+    // ── Supplementary columns to include for richer context ──
+    const suppCols = headers.reduce((acc, h, idx) => {
+        if (idx === refCol || idx === txtCol) return acc;
+        if (/title|name/i.test(h)                                    ||
+            /use\s*cases?$/i.test(h) || /description/i.test(h)       ||
+            /user\s*stor/i.test(h)   || /scenario/i.test(h)          ||
+            /requirement/i.test(h)                                   ||
+            /acceptance\s*criteria|acceptance|criteria/i.test(h)     ||
+            /expected\s*(result|output|behaviour|behavior)/i.test(h) ||
+            /objective|goal|purpose/i.test(h)                        ||
+            /actor|role|persona/i.test(h)                            ||
+            /precondition|pre[-\s]condition|given/i.test(h)) {
+            acc.push({ idx, label: headerRaw[idx] });
+        }
+        return acc;
+    }, []);
+
+    function buildText(row) {
+        const parts = [];
+        if (txtCol !== -1 && row[txtCol]) {
+            parts.push(String(row[txtCol]));
+        }
+        suppCols.forEach(({ idx, label }) => {
+            const val = row[idx];
+            if (val) parts.push(`${label}: ${String(val)}`);
+        });
+        if (!parts.length) {
+            // Fallback: join all non-ref cells
+            return row.filter((_, j) => j !== refCol).filter(Boolean).map(v => String(v)).join(' ');
+        }
+        return parts.join('. ');
+    }
+
+    // No recognisable columns at all — join everything
+    if (txtCol === -1 && suppCols.length === 0) {
+        return dataRows
+            .map((row, i) => ({
+                ref:  refCol !== -1 && row[refCol] ? String(row[refCol]) : `UC-${String(i + 1).padStart(3, '0')}`,
+                text: row.filter((_, j) => j !== refCol).filter(Boolean).map(v => String(v)).join(' '),
+            }))
+            .filter(uc => uc.text.trim());
     }
 
     return dataRows
-        .filter(row => row[txtCol])
         .map((row, i) => ({
-            ref: refCol !== -1 && row[refCol] ? String(row[refCol]) : `UC-${String(i + 1).padStart(3, '0')}`,
-            text: String(row[txtCol] ?? ''),
-        }));
+            ref:  refCol !== -1 && row[refCol] ? String(row[refCol]) : `UC-${String(i + 1).padStart(3, '0')}`,
+            text: buildText(row),
+        }))
+        .filter(uc => uc.text.trim());
 }
 
 /**
