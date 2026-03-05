@@ -454,30 +454,58 @@ function useCasesToCapabilities(ucList, ucCounts, maxCaps) {
 function builtInSummarise(rows, cols, stats) {
     var groups = groupByUseCase(rows, cols);
 
-    /* Collect all unique scenario texts across every use-case group.
-     * Primary source: test-case name / title (cols.testCase, cols.testCaseId).
-     * Fallback: when those columns are absent or contain only bare IDs (e.g. "TC001"),
-     * also pull in text from the steps or expected-result columns so that theme-based
-     * keyword analysis has meaningful content to work with on any file format. */
-    var allScenarios = [];
+    /* Build two parallel arrays from the uploaded data:
+     *
+     * allScenarios     — Unique real test-case TITLES (non-ID rows only).
+     *                    Used exclusively by detectSumSubject() so that
+     *                    domain nouns in short, clean titles are not diluted
+     *                    by the process-language in steps / expected results
+     *                    (e.g. "Enter", "Navigate", "Click").
+     *
+     * allAnalysisTexts — One entry per row.  Combines the test-case title
+     *                    with steps and expected-result text whenever those
+     *                    columns are present in the sheet.  Used for theme
+     *                    grouping and keyword extraction so the analysis
+     *                    has the richest possible signal from the full test
+     *                    specification, not just the title alone.
+     *                    When steps / expected-result columns are absent the
+     *                    entry is just the title (or ID fallback), matching
+     *                    the previous behaviour exactly. */
+    var allScenarios    = [];
+    var allAnalysisTexts = [];
     groups.forEach(function (ucRows) {
         ucRows.forEach(function (r) {
-            var name = (cols.testCase   ? String(r[cols.testCase]   || '') : '').trim()
-                    || (cols.testCaseId ? String(r[cols.testCaseId] || '') : '').trim();
-            /* If the name looks like a bare ID (e.g. "TC001", "1", "R-42"), supplement
-             * with richer descriptive text from other columns. */
+            var name     = (cols.testCase   ? String(r[cols.testCase]   || '') : '').trim()
+                        || (cols.testCaseId ? String(r[cols.testCaseId] || '') : '').trim();
             var isIdOnly = !name || SUM_ID_PATTERN.test(name);
-            var text = isIdOnly
-                ? ((cols.steps          ? String(r[cols.steps]          || '') : '').trim().slice(0, SUM_MAX_FALLBACK_TEXT)
-                || (cols.expectedResult ? String(r[cols.expectedResult] || '') : '').trim().slice(0, SUM_MAX_FALLBACK_TEXT)
-                || name)
-                : name;
-            if (text && allScenarios.indexOf(text) === -1) allScenarios.push(text);
+            var stepText = (cols.steps          ? String(r[cols.steps]          || '') : '').trim().slice(0, SUM_MAX_FALLBACK_TEXT);
+            var expText  = (cols.expectedResult ? String(r[cols.expectedResult] || '') : '').trim().slice(0, SUM_MAX_FALLBACK_TEXT);
+
+            /* Real title → add to allScenarios for subject detection */
+            if (!isIdOnly && allScenarios.indexOf(name) === -1) {
+                allScenarios.push(name);
+            }
+
+            /* Rich per-row text: real title (when available) + steps + expected result.
+             * For bare-ID rows the available step/expected text is used as the base. */
+            var parts = [];
+            if (!isIdOnly && name) parts.push(name);
+            if (stepText)          parts.push(stepText);
+            if (expText)           parts.push(expText);
+            if (!parts.length)     parts.push(name); // last resort: raw ID
+            allAnalysisTexts.push(parts.join(' '));
         });
     });
 
-    /* Detect main subject */
+    /* Detect main subject.
+     * Primary:  most-frequent meaningful noun across real test-case titles.
+     * Fallback: when titles are all bare IDs (allScenarios is empty), derive
+     *           the subject from the domain keywords in the rich analysis texts. */
     var subject = detectSumSubject(allScenarios);
+    if (!subject) {
+        var subjectKws = extractTopKeywords(allAnalysisTexts, 1);
+        if (subjectKws.length) subject = subjectKws[0];
+    }
 
     /* Collect named feature areas and their test-case counts */
     var ucList = stats.useCases.filter(function (uc) { return uc && uc !== '(No Use Case)'; });
@@ -504,8 +532,11 @@ function builtInSummarise(rows, cols, stats) {
         /*
          * Strategy 2 — theme-based keyword analysis (fallback when no named
          * feature areas are present or too few to be meaningful).
+         * Uses allAnalysisTexts (name + steps + expected result per row)
+         * so that theme detection and keyword extraction have the richest
+         * possible signal from the full test specification.
          */
-        var themeGroups = groupScenariosByTheme(allScenarios);
+        var themeGroups = groupScenariosByTheme(allAnalysisTexts);
         themeGroups.slice(0, SUM_MAX_CAPABILITIES).forEach(function (g) {
             var cap = themeCapability(g.key, g.list);
             if (cap) capabilities.push(cap);
@@ -565,6 +596,7 @@ function buildAIPrompt(rows, cols, stats) {
         if (cols.testCaseId)     parts.push('ID: '       + String(row[cols.testCaseId]     || '').trim());
         if (cols.testCase)       parts.push('Name: '     + String(row[cols.testCase]       || '').trim());
         if (cols.useCase)        parts.push('Use Case: ' + String(row[cols.useCase]        || '').trim());
+        if (cols.steps)          parts.push('Steps: '    + String(row[cols.steps]          || '').trim().slice(0, 120));
         if (cols.expectedResult) parts.push('Expected: ' + String(row[cols.expectedResult] || '').trim().slice(0, 120));
         prompt += (i + 1) + '. ' + parts.join(' | ') + '\n';
     });
