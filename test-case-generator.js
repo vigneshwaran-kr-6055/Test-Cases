@@ -996,8 +996,41 @@ async function extractPdfText(arrayBuffer) {
 
     if (!dropZone) return; // guard: generator elements not present
 
-    let parsedUseCases = null;
-    let generatedTCs   = null;
+    let parsedUseCases  = null;
+    let generatedTCs    = null;
+    let currentFileName = '';
+
+    /* ── History helpers ── */
+    const HISTORY_KEY    = 'tca_gen_history';
+    const HISTORY_MAX    = 20;
+
+    function saveToGenHistory(fileName, tcs) {
+        let history = [];
+        try { history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch (e) { history = []; }
+        const countBySev  = { showstopper: 0, critical: 0, major: 0, minor: 0 };
+        const countByType = { functional: 0, 'non-functional': 0, ui: 0, privacy: 0, security: 0 };
+        tcs.forEach(function (tc) {
+            if (tc.severity in countBySev)  countBySev[tc.severity]++;
+            if (tc.type     in countByType) countByType[tc.type]++;
+        });
+        const entry = {
+            id:        Date.now(),
+            fileName:  fileName,
+            timestamp: new Date().toISOString(),
+            testCases: tcs,
+            summary:   { total: tcs.length, bySeverity: countBySev, byType: countByType },
+        };
+        history.unshift(entry);
+        if (history.length > HISTORY_MAX) history = history.slice(0, HISTORY_MAX);
+        try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); } catch (e) {
+            // Storage quota exceeded – drop oldest entries until it fits
+            while (history.length > 1) {
+                history.pop();
+                try { localStorage.setItem(HISTORY_KEY, JSON.stringify(history)); break; } catch (e2) { /* continue */ }
+            }
+        }
+        window.dispatchEvent(new CustomEvent('tca-history-updated'));
+    }
 
     /* ── Helpers ── */
     function setStatus(msg, type) {
@@ -1042,7 +1075,8 @@ async function extractPdfText(arrayBuffer) {
         document.getElementById('gen-drop-hint').textContent  = (file.size / 1024).toFixed(1) + ' KB';
         setStatus('File ready. Click "Generate Test Cases" to start.', 'info');
         btnGenerate.disabled = false;
-        parsedUseCases = null;
+        currentFileName = file.name;
+        parsedUseCases  = null;
         clearResults();
         readFile(file);
     }
@@ -1162,6 +1196,7 @@ async function extractPdfText(arrayBuffer) {
         }
         renderResults(generatedTCs);
         setStatus(`✔ Generated ${generatedTCs.length} test case(s) from ${parsedUseCases.length} use case(s).`, 'success');
+        saveToGenHistory(currentFileName || 'unknown', generatedTCs);
     });
 
     /* ── Render results ── */

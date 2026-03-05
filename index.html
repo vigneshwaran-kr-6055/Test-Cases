@@ -31,8 +31,9 @@
 
 <!-- ── Tab Navigation ── -->
 <nav class="tab-nav" role="tablist">
-    <button class="tab-btn active" id="tab-reviewer" role="tab" aria-selected="true" aria-controls="section-review">🔍 Test Case Reviewer</button>
+    <button class="tab-btn active" id="tab-reviewer"  role="tab" aria-selected="true"  aria-controls="section-review">🔍 Test Case Reviewer</button>
     <button class="tab-btn"        id="tab-generator" role="tab" aria-selected="false" aria-controls="section-generator">⚡ Test Case Generator</button>
+    <button class="tab-btn"        id="tab-history"   role="tab" aria-selected="false" aria-controls="section-history">🕑 History</button>
 </nav>
 
 <!-- ── Section 1: Test Case Reviewer ── -->
@@ -154,7 +155,44 @@
     </div><!-- /.gen-wrap -->
 </div><!-- /#section-generator -->
 
+<!-- ── Section 3: History ── -->
+<div id="section-history" role="tabpanel" aria-labelledby="tab-history" hidden>
+    <div class="hist-wrap">
+
+        <!-- Generated Test Cases History -->
+        <div class="hist-panel">
+            <div class="hist-panel-header">
+                <h2>⚡ Generated Test Cases History <span id="hist-gen-count" class="hist-count-badge"></span></h2>
+                <button class="hist-clear-btn" id="hist-clear-gen" aria-label="Clear generated history">🗑 Clear All</button>
+            </div>
+            <div id="hist-gen-list" class="hist-list"></div>
+        </div>
+
+        <!-- Reviewed Test Cases History -->
+        <div class="hist-panel">
+            <div class="hist-panel-header">
+                <h2>🔍 Reviewed Test Cases History <span id="hist-rev-count" class="hist-count-badge"></span></h2>
+                <button class="hist-clear-btn" id="hist-clear-rev" aria-label="Clear reviewed history">🗑 Clear All</button>
+            </div>
+            <div id="hist-rev-list" class="hist-list"></div>
+        </div>
+
+    </div><!-- /.hist-wrap -->
+</div><!-- /#section-history -->
+
+<!-- ── History Detail Modal ── -->
+<div id="hist-modal-overlay" class="hist-modal-overlay" hidden tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="hist-modal-title">
+    <div class="hist-modal">
+        <div class="hist-modal-header">
+            <h2 id="hist-modal-title"></h2>
+            <button id="hist-modal-close" class="hist-modal-close" aria-label="Close">✕</button>
+        </div>
+        <div id="hist-modal-body" class="hist-modal-body"></div>
+    </div>
+</div>
+
 <script src="test-case-generator.js"></script>
+<script src="history.js"></script>
 <script>
 (function () {
     // ── Tab Navigation ──
@@ -169,6 +207,9 @@
             btn.classList.add('active');
             btn.setAttribute('aria-selected', 'true');
             document.getElementById(btn.getAttribute('aria-controls')).hidden = false;
+            if (btn.getAttribute('aria-controls') === 'section-history') {
+                window.dispatchEvent(new CustomEvent('tca-history-updated'));
+            }
         });
     });
 
