@@ -163,30 +163,13 @@
         <!-- Upload + Model Selection Card -->
         <div class="upload-card">
             <h2>Summarise Your Test Cases with AI</h2>
-            <p>Upload a test case spreadsheet (<strong>.xlsx</strong> or <strong>.csv</strong>), choose an AI model, and get a plain-language feature narrative — describing <em>what the product does</em> and <em>how each feature behaves</em> — so any stakeholder can understand the test suite at a glance.</p>
+            <p>Upload a test case spreadsheet (<strong>.xlsx</strong> or <strong>.csv</strong>) and get a plain-language feature narrative — describing <em>what the product does</em> and <em>how each feature behaves</em> — so any stakeholder can understand the test suite at a glance.</p>
 
             <div class="drop-zone" id="sum-drop-zone">
                 <input type="file" id="sum-file-input" accept=".xlsx,.csv" aria-label="Upload test case file">
                 <span class="icon">📂</span>
                 <div class="label" id="sum-drop-label">Drag &amp; drop your file here, or click to browse</div>
                 <div class="hint"  id="sum-drop-hint">.xlsx · .csv</div>
-            </div>
-
-            <!-- AI Model selector -->
-            <div class="sum-model-row">
-                <label class="sum-model-label" for="sum-ai-model">Choose AI Model:</label>
-                <select class="sum-model-select" id="sum-ai-model">
-                    <option value="builtin">🔧 Built-in Analysis (No API key required)</option>
-                    <option value="openai">🤖 OpenAI GPT-4o</option>
-                    <option value="gemini">✨ Google Gemini 1.5 Pro</option>
-                </select>
-            </div>
-
-            <!-- API key input (hidden for built-in) -->
-            <div class="sum-apikey-row" id="sum-api-key-row" hidden>
-                <label class="sum-model-label" for="sum-api-key">API Key:</label>
-                <input type="password" class="sum-apikey-input" id="sum-api-key"
-                       placeholder="Paste your API key here — it is never stored or transmitted except to the chosen model's API">
             </div>
 
             <button class="btn-summarise" id="btn-summarise" disabled>📋 Summarise Test Cases</button>

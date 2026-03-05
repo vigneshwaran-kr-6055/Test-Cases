@@ -149,6 +149,74 @@ function groupByUseCase(rows, cols) {
 }
 
 /* ─────────────────────────────────────────────
+   Theme patterns used to auto-classify scenarios
+   that have no named use-case / feature assigned.
+─────────────────────────────────────────────── */
+var THEME_PATTERNS = [
+    { key: 'auth',    label: 'Authentication & Session Management',
+      re: /\b(login|log[\s\-]?in|logout|log[\s\-]?out|sign[\s\-]?in|sign[\s\-]?out|auth|session|password|credential|token|forgot|reset)/i },
+    { key: 'create',  label: 'Data Creation',
+      re: /\b(creat|add\b|new\b|register|submit|insert|generat)/i },
+    { key: 'edit',    label: 'Editing & Updates',
+      re: /\b(edit|updat|modif|chang|save|patch|renam|move)/i },
+    { key: 'delete',  label: 'Deletion & Archiving',
+      re: /\b(delet|remov|archiv|purg|cancel|discard)/i },
+    { key: 'search',  label: 'Search & Filtering',
+      re: /\b(search|filter|sort|find|query|lookup|browse)/i },
+    { key: 'file',    label: 'File Management',
+      re: /\b(upload|download|import|export|attachment|file|document)/i },
+    { key: 'access',  label: 'Access Control',
+      re: /\b(role|permission|access|admin|rbac|privilege|unauthori[sz]e|forbidden)/i },
+    { key: 'notify',  label: 'Notifications & Alerts',
+      re: /\b(notification|email|sms|alert|push|reminder|message)/i },
+    { key: 'error',   label: 'Error & Edge Cases',
+      re: /\b(invalid|negative|error|exception|boundary|edge|empty|null|overflow|validat)/i },
+    { key: 'ui',      label: 'UI & UX Behaviour',
+      re: /\b(ui|ux|display|visible|layout|responsive|screen|button|click|navigat|redirect)/i },
+    { key: 'perf',    label: 'Performance',
+      re: /\b(performance|load|stress|latency|speed|concurr|timeout)/i },
+];
+
+/**
+ * Group an array of scenario name strings into themed feature blocks.
+ * Returns an array in the same shape as the named-use-case `features` array.
+ * Each scenario is assigned to the first matching theme (first-match wins);
+ * this keeps the output clean and avoids duplicate entries across groups.
+ */
+function buildThemedFeatures(scenarios) {
+    var grouped = {};
+    var order   = [];
+
+    scenarios.forEach(function (scenario) {
+        var matched = false;
+        for (var i = 0; i < THEME_PATTERNS.length; i++) {
+            if (THEME_PATTERNS[i].re.test(scenario)) {
+                var k = THEME_PATTERNS[i].key;
+                if (!grouped[k]) { grouped[k] = { label: THEME_PATTERNS[i].label, list: [] }; order.push(k); }
+                grouped[k].list.push(scenario);
+                matched = true;
+                break;
+            }
+        }
+        if (!matched) {
+            if (!grouped['misc']) { grouped['misc'] = { label: 'General Functionality', list: [] }; order.push('misc'); }
+            grouped['misc'].list.push(scenario);
+        }
+    });
+
+    return order.map(function (k) {
+        var g     = grouped[k];
+        var shown = g.list.slice(0, SUM_MAX_SCENARIOS_SHOWN);
+        return {
+            name:       g.label,
+            scenarios:  shown,
+            hasMore:    g.list.length > shown.length,
+            extraCount: g.list.length - shown.length,
+        };
+    });
+}
+
+/* ─────────────────────────────────────────────
    Built-in summarisation engine
    Produces a user-story / use-case narrative so stakeholders understand
    what the product does and how it behaves — without statistics or
@@ -158,18 +226,11 @@ function builtInSummarise(rows, cols, stats) {
     var ucList  = stats.useCases;
     var groups  = groupByUseCase(rows, cols);
 
-    /* ── 1. Intro sentence ── */
-    var intro = ucList.length > 0
-        ? 'The test suite covers <strong>' + ucList.length + ' feature area' +
-          (ucList.length !== 1 ? 's' : '') + '</strong>.'
-        : 'The test suite covers general application functionality.';
-
-    /* ── 2. Feature stories — one entry per named use case ── */
-    var features   = [];   // { name, scenarios[], hasMore }
-    var ungrouped  = [];   // test case names that have no use case assigned
+    /* ── 1. Feature stories — one entry per named use case ── */
+    var features           = [];
+    var ungroupedScenarios = [];
 
     groups.forEach(function (ucRows, ucName) {
-        // Collect representative scenario names / descriptions
         var scenarios = [];
         ucRows.forEach(function (r) {
             var name = (cols.testCase   ? String(r[cols.testCase]   || '') : '').trim()
@@ -178,47 +239,38 @@ function builtInSummarise(rows, cols, stats) {
         });
 
         if (ucName === '(No Use Case)') {
-            ungrouped = scenarios;
+            ungroupedScenarios = scenarios;
         } else {
-            var shown = scenarios.slice(0, 5);
+            var shown = scenarios.slice(0, SUM_MAX_SCENARIOS_SHOWN);
             features.push({
-                name:     ucName,
-                scenarios: shown,
-                hasMore:  scenarios.length > shown.length,
+                name:       ucName,
+                scenarios:  shown,
+                hasMore:    scenarios.length > shown.length,
                 extraCount: scenarios.length - shown.length,
             });
         }
     });
 
-    /* ── 3. Unclassified note (if any) ── */
-    var ungroupedNote = '';
-    if (ungrouped.length > 0) {
-        var allText = rows.map(function (r) {
-            return Object.values(r).join(' ').toLowerCase();
-        }).join(' ');
+    /* ── 2. Intelligently classify ungrouped scenarios into themed blocks ── */
+    if (ungroupedScenarios.length > 0) {
+        buildThemedFeatures(ungroupedScenarios).forEach(function (f) { features.push(f); });
+    }
 
-        var areas = [];
-        if (/\b(login|logout|sign in|sign out|auth|session|password|credential)\b/.test(allText)) areas.push('authentication & session management');
-        if (/\b(create|add|new|register|submit|insert)\b/.test(allText)) areas.push('data creation');
-        if (/\b(edit|update|modify|change|save|patch)\b/.test(allText)) areas.push('editing & updates');
-        if (/\b(delete|remove|archive|purge)\b/.test(allText)) areas.push('deletion');
-        if (/\b(search|filter|sort|find|query|lookup)\b/.test(allText)) areas.push('search & filtering');
-        if (/\b(upload|download|import|export|attachment|file)\b/.test(allText)) areas.push('file management');
-        if (/\b(role|permission|access|admin|rbac|privilege)\b/.test(allText)) areas.push('access control');
-        if (/\b(notification|email|sms|alert|push|reminder)\b/.test(allText)) areas.push('notifications & alerts');
-        if (/\b(invalid|negative|error|exception|boundary|edge)\b/.test(allText)) areas.push('error & edge cases');
-        if (/\b(ui|ux|display|visible|layout|responsive|screen)\b/.test(allText)) areas.push('UI/UX behaviour');
-        if (/\b(performance|load|stress|latency|speed|concurr)\b/.test(allText)) areas.push('performance');
-
-        ungroupedNote = ungrouped.length + ' additional scenario' +
-            (ungrouped.length !== 1 ? 's are' : ' is') + ' not assigned to a named feature' +
-            (areas.length > 0 ? ', spanning areas such as ' + areas.join(', ') : '') + '.';
+    /* ── 3. Intro sentence ── */
+    var intro;
+    if (ucList.length > 0) {
+        intro = 'The test suite covers <strong>' + ucList.length + ' feature area' +
+                (ucList.length !== 1 ? 's' : '') + '</strong>.';
+    } else if (features.length > 0) {
+        intro = 'The test suite validates <strong>' + rows.length + ' scenario' +
+                (rows.length !== 1 ? 's' : '') + '</strong> across the following functional areas.';
+    } else {
+        intro = 'The test suite covers general application functionality.';
     }
 
     return {
-        intro:          intro,
-        features:       features,
-        ungroupedNote:  ungroupedNote,
+        intro:    intro,
+        features: features,
     };
 }
 
@@ -362,6 +414,9 @@ var AI_MAX_RESPONSE_TOKENS = 1500;
 /** Low temperature for factual, consistent summaries (not creative writing). */
 var AI_TEMPERATURE = 0.3;
 
+/** Max representative scenarios shown per feature block (named or themed). */
+var SUM_MAX_SCENARIOS_SHOWN = 5;
+
 /* ─────────────────────────────────────────────
    History helpers
 ───────────────────────────────────────────── */
@@ -404,9 +459,6 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
 (function () {
     var dropZone    = document.getElementById('sum-drop-zone');
     var fileInput   = document.getElementById('sum-file-input');
-    var modelSelect = document.getElementById('sum-ai-model');
-    var apiKeyRow   = document.getElementById('sum-api-key-row');
-    var apiKeyInput = document.getElementById('sum-api-key');
     var btnSummarise = document.getElementById('btn-summarise');
     var statusEl    = document.getElementById('sum-status');
 
@@ -415,12 +467,6 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
 
     var parsedRows      = null;
     var currentFileName = '';
-
-    /* ── Model selector ── */
-    modelSelect.addEventListener('change', function () {
-        apiKeyRow.hidden = modelSelect.value === 'builtin';
-        apiKeyInput.value = '';
-    });
 
     /* ── Status bar ── */
     function setStatus(msg, type) {
@@ -514,14 +560,6 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
             return;
         }
 
-        var selectedModel = modelSelect.value;
-        var apiKey = apiKeyInput ? apiKeyInput.value.trim() : '';
-
-        if (selectedModel !== 'builtin' && !apiKey) {
-            setStatus('⚠ Please enter your API key for the selected AI model.', 'error');
-            return;
-        }
-
         btnSummarise.disabled = true;
         clearResults();
 
@@ -530,27 +568,10 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
         var stats   = extractSumStats(parsedRows, cols);
 
         try {
-            var summaryHtml;
-            var modelLabel;
-
-            if (selectedModel === 'openai') {
-                setStatus('⏳ Calling OpenAI GPT-4o…', 'info');
-                modelLabel = 'OpenAI GPT-4o';
-                var prompt   = buildAIPrompt(parsedRows, cols, stats);
-                var aiText   = await callOpenAI(apiKey, prompt);
-                summaryHtml  = aiTextToHtml(aiText);
-            } else if (selectedModel === 'gemini') {
-                setStatus('⏳ Calling Google Gemini 1.5 Pro…', 'info');
-                modelLabel = 'Google Gemini 1.5 Pro';
-                var prompt   = buildAIPrompt(parsedRows, cols, stats);
-                var aiText   = await callGemini(apiKey, prompt);
-                summaryHtml  = aiTextToHtml(aiText);
-            } else {
-                setStatus('⏳ Generating built-in summary…', 'info');
-                modelLabel = 'Built-in Analysis';
-                var builtIn  = builtInSummarise(parsedRows, cols, stats);
-                summaryHtml  = buildBuiltInSummaryHtml(builtIn);
-            }
+            setStatus('⏳ Generating summary…', 'info');
+            var modelLabel  = 'Auto Analysis';
+            var builtIn     = builtInSummarise(parsedRows, cols, stats);
+            var summaryHtml = buildBuiltInSummaryHtml(builtIn);
 
             renderSumStats(stats, cols);
             renderSumSummary(summaryHtml, modelLabel);
@@ -637,10 +658,6 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
                 }
                 html += '</div>';
             });
-        }
-
-        if (builtIn.ungroupedNote) {
-            html += '<p class="sum-ungrouped-note">' + escSum(builtIn.ungroupedNote) + '</p>';
         }
 
         return html;
