@@ -1070,6 +1070,56 @@ body.hist-modal-open {
     border-left: 3px solid var(--accent);
 }
 
+/* ── Built-in narrative output ── */
+.sum-narrative-intro {
+    font-size: 1rem;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+}
+
+.sum-feature-block {
+    margin-bottom: 18px;
+    padding: 14px 18px;
+    background: var(--chip-bg);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+}
+
+.sum-feature-name {
+    margin: 0 0 8px;
+    font-size: 0.97rem;
+    color: var(--text);
+}
+
+.sum-scenario-list {
+    list-style: disc;
+    padding-left: 18px;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.sum-scenario-list li {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+.sum-more-hint {
+    font-size: 0.83rem !important;
+    color: var(--text-muted) !important;
+    list-style: none !important;
+    margin-left: -18px;
+}
+
+.sum-ungrouped-note {
+    margin-top: 18px;
+    font-size: 0.88rem;
+    color: var(--text-muted);
+    font-style: italic;
+}
+
 /* History modal content for summary entries */
 .hist-sum-content {
     background: var(--chip-bg);

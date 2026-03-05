@@ -150,188 +150,75 @@ function groupByUseCase(rows, cols) {
 
 /* ─────────────────────────────────────────────
    Built-in summarisation engine
-   Generates a rich, structured summary without any external API.
+   Produces a user-story / use-case narrative so stakeholders understand
+   what the product does and how it behaves — without statistics or
+   severity breakdowns.
 ───────────────────────────────────────────── */
 function builtInSummarise(rows, cols, stats) {
-    var total = stats.total;
+    var ucList  = stats.useCases;
+    var groups  = groupByUseCase(rows, cols);
 
-    /* ── 1. Executive paragraph ── */
-    var exec = '';
-    var ucList = stats.useCases;
+    /* ── 1. Intro sentence ── */
+    var intro = ucList.length > 0
+        ? 'The test suite covers <strong>' + ucList.length + ' feature area' +
+          (ucList.length !== 1 ? 's' : '') + '</strong>.'
+        : 'The test suite covers general application functionality.';
 
-    if (ucList.length > 0) {
-        var listed = ucList.slice(0, 5).join(', ');
-        var more = ucList.length > 5 ? ' and ' + (ucList.length - 5) + ' more' : '';
-        exec += 'This test suite contains <strong>' + total + '</strong> test case' + (total !== 1 ? 's' : '') +
-                ' covering <strong>' + ucList.length + '</strong> use case' + (ucList.length !== 1 ? 's' : '') +
-                ': <em>' + escSum(listed) + more + '</em>. ';
-    } else {
-        exec += 'This test suite contains <strong>' + total + '</strong> test case' + (total !== 1 ? 's' : '') + '. ';
-    }
+    /* ── 2. Feature stories — one entry per named use case ── */
+    var features   = [];   // { name, scenarios[], hasMore }
+    var ungrouped  = [];   // test case names that have no use case assigned
 
-    // Severity highlight
-    var sevEntries = Object.entries(stats.bySeverity).sort(function (a, b) { return b[1] - a[1]; });
-    if (sevEntries.length > 0) {
-        var topSev = sevEntries[0];
-        exec += 'The majority (' + topSev[1] + ' of ' + total + ') are categorised as <strong>' +
-                escSum(capFirst(topSev[0])) + '</strong> severity. ';
-    }
-
-    // Status highlight
-    var statusEntries = Object.entries(stats.byStatus).sort(function (a, b) { return b[1] - a[1]; });
-    if (statusEntries.length > 0) {
-        var passCount = 0, failCount = 0, notRunCount = 0;
-        statusEntries.forEach(function (e) {
-            var k = e[0];
-            if (/pass|passed|done|success/.test(k))    passCount   += e[1];
-            else if (/fail|failed|block|defect/.test(k)) failCount += e[1];
-            else if (/not run|pending|new|untested/.test(k)) notRunCount += e[1];
-        });
-        var statusParts = [];
-        if (passCount)   statusParts.push('<span style="color:#2e7d32"><strong>' + passCount   + ' passed</strong></span>');
-        if (failCount)   statusParts.push('<span style="color:#c62828"><strong>' + failCount   + ' failed/blocked</strong></span>');
-        if (notRunCount) statusParts.push('<span style="color:#e65100"><strong>' + notRunCount + ' not yet run</strong></span>');
-        if (statusParts.length > 0) {
-            exec += 'Execution status: ' + statusParts.join(', ') + '. ';
-        }
-    }
-
-    // Automation
-    var autoTotal = stats.automatable + stats.notAutomatable;
-    if (autoTotal > 0) {
-        var autoPct = Math.round((stats.automatable / autoTotal) * 100);
-        exec += '<strong>' + autoPct + '%</strong> of test cases (' + stats.automatable + ' of ' + autoTotal + ') are marked as automatable. ';
-    }
-
-    // Bugs
-    if (stats.withBug > 0) {
-        exec += '<strong>' + stats.withBug + '</strong> test case' + (stats.withBug !== 1 ? 's have' : ' has') + ' linked bug IDs. ';
-    }
-
-    /* ── 2. Coverage assessment ── */
-    var coverage = '';
-    var allText = rows.map(function (r) {
-        return Object.values(r).join(' ').toLowerCase();
-    }).join(' ');
-
-    var coverageAreas = [];
-    if (/\b(login|logout|sign in|sign out|auth|session|password|credential)\b/.test(allText))
-        coverageAreas.push('Authentication & Session Management');
-    if (/\b(create|add|new|register|submit|insert)\b/.test(allText))
-        coverageAreas.push('Data Creation');
-    if (/\b(edit|update|modify|change|save|patch)\b/.test(allText))
-        coverageAreas.push('Data Editing & Updates');
-    if (/\b(delete|remove|archive|purge)\b/.test(allText))
-        coverageAreas.push('Data Deletion');
-    if (/\b(search|filter|sort|find|query|lookup)\b/.test(allText))
-        coverageAreas.push('Search & Filtering');
-    if (/\b(upload|download|import|export|attachment|file)\b/.test(allText))
-        coverageAreas.push('File Upload/Download');
-    if (/\b(payment|billing|invoice|checkout|transaction|order)\b/.test(allText))
-        coverageAreas.push('Payment & Billing');
-    if (/\b(report|analytics|dashboard|chart|graph|metric)\b/.test(allText))
-        coverageAreas.push('Reporting & Analytics');
-    if (/\b(role|permission|access|admin|rbac|privilege)\b/.test(allText))
-        coverageAreas.push('Role & Access Control');
-    if (/\b(notification|email|sms|alert|push|reminder)\b/.test(allText))
-        coverageAreas.push('Notifications & Alerts');
-    if (/\b(invalid|negative|error|exception|boundary|edge)\b/.test(allText))
-        coverageAreas.push('Negative & Boundary Testing');
-    if (/\b(ui|ux|display|visible|layout|responsive|screen)\b/.test(allText))
-        coverageAreas.push('UI/UX Validation');
-    if (/\b(api|endpoint|integration|rest|webhook|http)\b/.test(allText))
-        coverageAreas.push('API & Integrations');
-    if (/\b(performance|load|stress|latency|speed|concurr)\b/.test(allText))
-        coverageAreas.push('Performance & Load Testing');
-
-    if (coverageAreas.length > 0) {
-        coverage = 'The test suite spans the following functional areas: <strong>' +
-                   coverageAreas.join('</strong>, <strong>') + '</strong>.';
-    } else {
-        coverage = 'The test suite covers general application functionality.';
-    }
-
-    /* ── 3. Use case breakdown paragraphs ── */
-    var ucBreakdown = [];
-    var groups = groupByUseCase(rows, cols);
     groups.forEach(function (ucRows, ucName) {
-        var sevMap = {};
-        var passC = 0, failC = 0;
-        var autoC = 0;
+        // Collect representative scenario names / descriptions
+        var scenarios = [];
         ucRows.forEach(function (r) {
-            if (cols.severity) {
-                var s = String(r[cols.severity] || '').trim().toLowerCase() || 'unspecified';
-                sevMap[s] = (sevMap[s] || 0) + 1;
-            }
-            if (cols.status) {
-                var st = String(r[cols.status] || '').trim().toLowerCase();
-                if (/pass|passed|done|success/.test(st)) passC++;
-                else if (/fail|failed|block/.test(st)) failC++;
-            }
-            if (cols.isAutomatable) {
-                var a = String(r[cols.isAutomatable] || '').trim().toLowerCase();
-                if (/^(yes|y|true|1|automatable)$/.test(a)) autoC++;
-            }
+            var name = (cols.testCase   ? String(r[cols.testCase]   || '') : '').trim()
+                    || (cols.testCaseId ? String(r[cols.testCaseId] || '') : '').trim();
+            if (name && scenarios.indexOf(name) === -1) scenarios.push(name);
         });
 
-        var sevSummary = Object.entries(sevMap)
-            .sort(function (a, b) { return b[1] - a[1]; })
-            .map(function (e) { return e[1] + ' ' + capFirst(e[0]); })
-            .join(', ');
-
-        var line = '<strong>' + escSum(ucName) + '</strong> — ' + ucRows.length +
-                   ' test case' + (ucRows.length !== 1 ? 's' : '');
-        if (sevSummary) line += ' (' + sevSummary + ')';
-        if (passC || failC) {
-            line += '; ' + passC + ' passed';
-            if (failC) line += ', ' + failC + ' failed';
+        if (ucName === '(No Use Case)') {
+            ungrouped = scenarios;
+        } else {
+            var shown = scenarios.slice(0, 5);
+            features.push({
+                name:     ucName,
+                scenarios: shown,
+                hasMore:  scenarios.length > shown.length,
+                extraCount: scenarios.length - shown.length,
+            });
         }
-        if (autoC) line += '; ' + autoC + ' automatable';
-        ucBreakdown.push(line);
     });
 
-    /* ── 4. Observations ── */
-    var observations = [];
-    var highSev = (stats.bySeverity['critical'] || 0) +
-                  (stats.bySeverity['showstopper'] || 0) +
-                  (stats.bySeverity['high'] || 0) +
-                  (stats.bySeverity['blocker'] || 0);
-    if (highSev > 0) {
-        observations.push('⚠️ <strong>' + highSev + '</strong> high-priority test case' +
-            (highSev !== 1 ? 's require' : ' requires') + ' immediate attention.');
-    }
+    /* ── 3. Unclassified note (if any) ── */
+    var ungroupedNote = '';
+    if (ungrouped.length > 0) {
+        var allText = rows.map(function (r) {
+            return Object.values(r).join(' ').toLowerCase();
+        }).join(' ');
 
-    var failedCount = 0;
-    Object.entries(stats.byStatus).forEach(function (e) {
-        if (/fail|failed|block|defect/.test(e[0])) failedCount += e[1];
-    });
-    if (failedCount > 0) {
-        observations.push('🔴 <strong>' + failedCount + '</strong> test case' +
-            (failedCount !== 1 ? 's have' : ' has') + ' a failed or blocked status — these should be investigated.');
-    }
+        var areas = [];
+        if (/\b(login|logout|sign in|sign out|auth|session|password|credential)\b/.test(allText)) areas.push('authentication & session management');
+        if (/\b(create|add|new|register|submit|insert)\b/.test(allText)) areas.push('data creation');
+        if (/\b(edit|update|modify|change|save|patch)\b/.test(allText)) areas.push('editing & updates');
+        if (/\b(delete|remove|archive|purge)\b/.test(allText)) areas.push('deletion');
+        if (/\b(search|filter|sort|find|query|lookup)\b/.test(allText)) areas.push('search & filtering');
+        if (/\b(upload|download|import|export|attachment|file)\b/.test(allText)) areas.push('file management');
+        if (/\b(role|permission|access|admin|rbac|privilege)\b/.test(allText)) areas.push('access control');
+        if (/\b(notification|email|sms|alert|push|reminder)\b/.test(allText)) areas.push('notifications & alerts');
+        if (/\b(invalid|negative|error|exception|boundary|edge)\b/.test(allText)) areas.push('error & edge cases');
+        if (/\b(ui|ux|display|visible|layout|responsive|screen)\b/.test(allText)) areas.push('UI/UX behaviour');
+        if (/\b(performance|load|stress|latency|speed|concurr)\b/.test(allText)) areas.push('performance');
 
-    var autoTotal2 = stats.automatable + stats.notAutomatable;
-    if (autoTotal2 > 0 && stats.automatable === 0) {
-        observations.push('🤖 No test cases are currently marked as automatable. Consider reviewing candidates for test automation.');
-    } else if (autoTotal2 > 0) {
-        var autoPct2 = Math.round((stats.automatable / autoTotal2) * 100);
-        if (autoPct2 >= 70) {
-            observations.push('✅ Strong automation readiness: <strong>' + autoPct2 + '%</strong> of test cases are marked automatable.');
-        } else if (autoPct2 < 30) {
-            observations.push('🤖 Low automation coverage (' + autoPct2 + '%). Increasing automatable tests can improve regression speed.');
-        }
-    }
-
-    if (stats.withBug > 0) {
-        var bugPct = Math.round((stats.withBug / total) * 100);
-        observations.push('🐛 <strong>' + bugPct + '%</strong> of test cases (' + stats.withBug + ') have linked defect IDs — review their current resolution status.');
+        ungroupedNote = ungrouped.length + ' additional scenario' +
+            (ungrouped.length !== 1 ? 's are' : ' is') + ' not assigned to a named feature' +
+            (areas.length > 0 ? ', spanning areas such as ' + areas.join(', ') : '') + '.';
     }
 
     return {
-        executive: exec,
-        coverage:  coverage,
-        useCaseBreakdown: ucBreakdown,
-        observations: observations,
+        intro:          intro,
+        features:       features,
+        ungroupedNote:  ungroupedNote,
     };
 }
 
@@ -342,39 +229,20 @@ function buildAIPrompt(rows, cols, stats) {
     var total = stats.total;
     var ucList = stats.useCases;
 
-    // Stats header
-    var prompt = 'You are a senior QA architect. Summarise the following test suite data clearly and concisely so that any stakeholder — technical or non-technical — can fully understand what is being tested without reading each row individually. Avoid bullet-point lists where prose works better. Be specific and insightful.\n\n';
+    var prompt = 'You are a senior QA engineer. Read the test case data below and write a clear, concise feature narrative — in the style of user stories or use cases — so that any stakeholder can immediately understand what the product does and how it behaves.\n\n';
 
-    prompt += '## Test Suite Overview\n';
+    prompt += '## Test Suite Data\n';
     prompt += '- Total test cases: ' + total + '\n';
-    if (ucList.length) prompt += '- Use cases / modules: ' + ucList.join(', ') + '\n';
-
-    // Severity
-    var sevParts = Object.entries(stats.bySeverity).map(function (e) { return e[1] + ' ' + e[0]; });
-    if (sevParts.length) prompt += '- Severity breakdown: ' + sevParts.join(', ') + '\n';
-
-    // Status
-    var stParts = Object.entries(stats.byStatus).map(function (e) { return e[1] + ' ' + e[0]; });
-    if (stParts.length) prompt += '- Execution status: ' + stParts.join(', ') + '\n';
-
-    // Automation
-    var autoTotal = stats.automatable + stats.notAutomatable;
-    if (autoTotal > 0) {
-        var autoPct = Math.round((stats.automatable / autoTotal) * 100);
-        prompt += '- Automatable: ' + stats.automatable + ' of ' + autoTotal + ' (' + autoPct + '%)\n';
-    }
-    if (stats.withBug) prompt += '- Test cases with linked bug IDs: ' + stats.withBug + '\n';
+    if (ucList.length) prompt += '- Feature areas / use cases: ' + ucList.join(', ') + '\n';
 
     // Sample test cases (limited to AI_MAX_SAMPLE_ROWS to stay within API token limits)
     var sample = rows.slice(0, AI_MAX_SAMPLE_ROWS);
     prompt += '\n## Sample Test Cases\n';
     sample.forEach(function (row, i) {
         var parts = [];
-        if (cols.testCaseId)     parts.push('ID: ' + String(row[cols.testCaseId] || '').trim());
-        if (cols.testCase)       parts.push('Name: ' + String(row[cols.testCase] || '').trim());
-        if (cols.useCase)        parts.push('Use Case: ' + String(row[cols.useCase] || '').trim());
-        if (cols.severity)       parts.push('Severity: ' + String(row[cols.severity] || '').trim());
-        if (cols.status)         parts.push('Status: ' + String(row[cols.status] || '').trim());
+        if (cols.testCaseId)     parts.push('ID: '       + String(row[cols.testCaseId]     || '').trim());
+        if (cols.testCase)       parts.push('Name: '     + String(row[cols.testCase]       || '').trim());
+        if (cols.useCase)        parts.push('Use Case: ' + String(row[cols.useCase]        || '').trim());
         if (cols.expectedResult) parts.push('Expected: ' + String(row[cols.expectedResult] || '').trim().slice(0, 120));
         prompt += (i + 1) + '. ' + parts.join(' | ') + '\n';
     });
@@ -382,12 +250,15 @@ function buildAIPrompt(rows, cols, stats) {
         prompt += '… and ' + (rows.length - AI_MAX_SAMPLE_ROWS) + ' more test cases not shown.\n';
     }
 
-    prompt += '\n## Your Task\nPlease provide:\n';
-    prompt += '1. **Executive Summary** (2–4 clear sentences explaining what this test suite covers and its current health)\n';
-    prompt += '2. **Functional Coverage** (What features/areas are well covered?)\n';
-    prompt += '3. **Notable Observations** (Any risks, gaps, patterns, or concerns worth highlighting)\n';
-    prompt += '4. **Automation Readiness** (Brief assessment based on the automatable data)\n';
-    prompt += '\nWrite in clear, professional prose. No filler phrases. Make it flawless so a stakeholder can understand the test coverage at a glance.\n';
+    prompt += '\n## Your Task\n';
+    prompt += 'Write a feature narrative describing:\n';
+    prompt += '1. **What the product / feature does** — from the user\'s perspective\n';
+    prompt += '2. **How each feature area behaves** — what users can do, what the system does in response\n';
+    prompt += '3. **Notable behaviours or edge cases** that are explicitly tested\n';
+    prompt += '\nGuidelines:\n';
+    prompt += '- Write in short, plain-language paragraphs or use one heading per feature area.\n';
+    prompt += '- Do NOT include statistics, severity labels, test counts, or pass/fail numbers.\n';
+    prompt += '- Make it easily digestible for a non-technical stakeholder.\n';
 
     return prompt;
 }
@@ -541,7 +412,6 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
 
     var secStats    = document.getElementById('sum-sec-stats');
     var secSummary  = document.getElementById('sum-sec-summary');
-    var secUseCase  = document.getElementById('sum-sec-usecase');
 
     var parsedRows      = null;
     var currentFileName = '';
@@ -560,7 +430,7 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
     }
 
     function clearResults() {
-        [secStats, secSummary, secUseCase].forEach(function (s) {
+        [secStats, secSummary].forEach(function (s) {
             if (s) s.classList.remove('visible');
         });
     }
@@ -684,9 +554,8 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
 
             renderSumStats(stats, cols);
             renderSumSummary(summaryHtml, modelLabel);
-            renderUseCaseBreakdown(parsedRows, cols, stats);
 
-            // Save to history
+            // Save to history before rendering so the entry is always captured
             var ucBreakdownArr = [];
             var ucGroups = groupByUseCase(parsedRows, cols);
             ucGroups.forEach(function (ucRows, ucName) {
@@ -714,7 +583,7 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
 
         // Use cases
         if (stats.useCases.length > 0) {
-            html += '<div class="stat-chip"><div class="num">' + stats.useCases.length + '</div><div class="lbl">Use cases / modules</div></div>';
+            html += '<div class="stat-chip"><div class="num">' + stats.useCases.length + '</div><div class="lbl">Feature areas</div></div>';
         }
 
         // Automatable
@@ -730,40 +599,6 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
         }
 
         html += '</div>';
-
-        // Severity row
-        if (Object.keys(stats.bySeverity).length > 0) {
-            html += '<p class="section-label" style="margin-top:18px">By Severity</p><div class="stats-row">';
-            var sevColors = {
-                showstopper: '#3d0000', blocker: '#3d0000',
-                critical: '#b71c1c', high: '#b71c1c',
-                major: '#e65100', medium: '#e65100',
-                minor: '#f9a825', low: '#f9a825',
-            };
-            Object.entries(stats.bySeverity).sort(function (a, b) { return b[1] - a[1]; })
-                .forEach(function (e) {
-                    var color = sevColors[e[0]] || '#1a73e8';
-                    html += '<div class="stat-chip" style="border-top:3px solid ' + color + '"><div class="num" style="color:' + color + '">' + e[1] + '</div><div class="lbl">' + escSum(capFirst(e[0])) + '</div></div>';
-                });
-            html += '</div>';
-        }
-
-        // Status row
-        if (Object.keys(stats.byStatus).length > 0) {
-            html += '<p class="section-label" style="margin-top:18px">By Status</p><div class="stats-row">';
-            var stColors = {
-                pass: '#2e7d32', passed: '#2e7d32', done: '#2e7d32',
-                fail: '#c62828', failed: '#c62828', blocked: '#c62828',
-                'not run': '#e65100', pending: '#e65100', new: '#e65100',
-            };
-            Object.entries(stats.byStatus).sort(function (a, b) { return b[1] - a[1]; })
-                .forEach(function (e) {
-                    var color = stColors[e[0]] || '#888';
-                    html += '<div class="stat-chip" style="border-top:3px solid ' + color + '"><div class="num" style="color:' + color + '">' + e[1] + '</div><div class="lbl">' + escSum(capFirst(e[0])) + '</div></div>';
-                });
-            html += '</div>';
-        }
-
         container.innerHTML = html;
         secStats.classList.add('visible');
     }
@@ -772,125 +607,40 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
     function renderSumSummary(html, modelLabel) {
         var titleEl   = document.getElementById('sum-summary-title');
         var contentEl = document.getElementById('sum-content');
-        if (titleEl)   titleEl.textContent = '🤖 AI Summary — ' + modelLabel;
+        var baseTitle = '📋 What\'s Being Tested';
+        var label = (modelLabel === 'Built-in Analysis') ? baseTitle : baseTitle + ' — ' + modelLabel;
+        if (titleEl)   titleEl.textContent = label;
         if (contentEl) contentEl.innerHTML  = html;
         secSummary.classList.add('visible');
-    }
-
-    /* ── Render use case breakdown table ── */
-    function renderUseCaseBreakdown(rows, cols, stats) {
-        var container = document.getElementById('sum-usecase-body');
-        if (!container) return;
-
-        var groups = groupByUseCase(rows, cols);
-        if (groups.size === 0) {
-            container.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem">No use case column detected. Add a "Use Case" column for a detailed breakdown.</p>';
-            secUseCase.classList.add('visible');
-            return;
-        }
-
-        var html = '<div class="table-wrapper"><table><thead><tr>';
-        html += '<th>Use Case / Module</th><th>Test Cases</th>';
-        if (Object.keys(stats.bySeverity).length) html += '<th>Severity Breakdown</th>';
-        if (Object.keys(stats.byStatus).length)   html += '<th>Status</th>';
-        var autoTotal = stats.automatable + stats.notAutomatable;
-        if (autoTotal > 0) html += '<th>Automatable</th>';
-        html += '</tr></thead><tbody>';
-
-        groups.forEach(function (ucRows, ucName) {
-            var sevMap = {}, stMap = {}, autoC = 0;
-            ucRows.forEach(function (r) {
-                if (cols.severity) {
-                    var s = String(r[cols.severity] || '').trim().toLowerCase() || 'unspecified';
-                    sevMap[s] = (sevMap[s] || 0) + 1;
-                }
-                if (cols.status) {
-                    var st = String(r[cols.status] || '').trim().toLowerCase() || 'unspecified';
-                    stMap[st] = (stMap[st] || 0) + 1;
-                }
-                if (cols.isAutomatable) {
-                    var a = String(r[cols.isAutomatable] || '').trim().toLowerCase();
-                    if (/^(yes|y|true|1|automatable)$/.test(a)) autoC++;
-                }
-            });
-
-            var sevColors2 = {
-                showstopper: '#3d0000', blocker: '#3d0000',
-                critical: '#b71c1c', high: '#b71c1c',
-                major: '#e65100', medium: '#e65100',
-                minor: '#f9a825', low: '#f9a825',
-            };
-            var stColors2 = {
-                pass: '#2e7d32', passed: '#2e7d32',
-                fail: '#c62828', failed: '#c62828', blocked: '#c62828',
-                'not run': '#e65100', pending: '#e65100',
-            };
-
-            html += '<tr>';
-            html += '<td><strong>' + escSum(ucName) + '</strong></td>';
-            html += '<td style="text-align:center"><strong>' + ucRows.length + '</strong></td>';
-
-            if (Object.keys(stats.bySeverity).length) {
-                var sevHtml = Object.entries(sevMap).sort(function (a, b) { return b[1] - a[1]; })
-                    .map(function (e) {
-                        var c = sevColors2[e[0]] || '#888';
-                        return '<span style="margin-right:6px;color:' + c + ';font-weight:600">' + e[1] + ' ' + capFirst(e[0]) + '</span>';
-                    }).join('');
-                html += '<td>' + (sevHtml || '—') + '</td>';
-            }
-
-            if (Object.keys(stats.byStatus).length) {
-                var stHtml = Object.entries(stMap).sort(function (a, b) { return b[1] - a[1]; })
-                    .map(function (e) {
-                        var c = stColors2[e[0]] || '#888';
-                        return '<span style="margin-right:6px;color:' + c + ';font-weight:600">' + e[1] + ' ' + capFirst(e[0]) + '</span>';
-                    }).join('');
-                html += '<td>' + (stHtml || '—') + '</td>';
-            }
-
-            if (autoTotal > 0) {
-                html += '<td style="text-align:center">' + (autoC > 0 ? '<span style="color:#2e7d32;font-weight:600">' + autoC + ' ✓</span>' : '—') + '</td>';
-            }
-
-            html += '</tr>';
-        });
-
-        html += '</tbody></table></div>';
-        container.innerHTML = html;
-        secUseCase.classList.add('visible');
     }
 
     /* ── Build HTML for built-in summary result ── */
     function buildBuiltInSummaryHtml(builtIn) {
         var html = '';
 
-        html += '<div class="sum-executive">' + builtIn.executive + '</div>';
+        html += '<p class="sum-narrative-intro">' + builtIn.intro + '</p>';
 
-        html += '<div class="sum-coverage-section">';
-        html += '<h4 class="sum-sub-heading">📐 Functional Coverage</h4>';
-        html += '<p>' + builtIn.coverage + '</p>';
-        html += '</div>';
-
-        if (builtIn.useCaseBreakdown && builtIn.useCaseBreakdown.length > 0) {
-            html += '<div class="sum-uc-section">';
-            html += '<h4 class="sum-sub-heading">📋 Use Case Highlights</h4>';
-            html += '<ul class="sum-uc-list">';
-            builtIn.useCaseBreakdown.forEach(function (line) {
-                html += '<li>' + line + '</li>';
+        if (builtIn.features && builtIn.features.length > 0) {
+            builtIn.features.forEach(function (feature) {
+                html += '<div class="sum-feature-block">';
+                html += '<p class="sum-feature-name"><strong>' + escSum(feature.name) + '</strong></p>';
+                if (feature.scenarios && feature.scenarios.length > 0) {
+                    html += '<ul class="sum-scenario-list">';
+                    feature.scenarios.forEach(function (s) {
+                        html += '<li>' + escSum(s) + '</li>';
+                    });
+                    if (feature.hasMore) {
+                        html += '<li class="sum-more-hint">…and ' + feature.extraCount +
+                                ' more scenario' + (feature.extraCount !== 1 ? 's' : '') + '</li>';
+                    }
+                    html += '</ul>';
+                }
+                html += '</div>';
             });
-            html += '</ul>';
-            html += '</div>';
         }
 
-        if (builtIn.observations && builtIn.observations.length > 0) {
-            html += '<div class="sum-obs-section">';
-            html += '<h4 class="sum-sub-heading">🔎 Key Observations</h4>';
-            html += '<ul class="sum-obs-list">';
-            builtIn.observations.forEach(function (obs) {
-                html += '<li>' + obs + '</li>';
-            });
-            html += '</ul>';
-            html += '</div>';
+        if (builtIn.ungroupedNote) {
+            html += '<p class="sum-ungrouped-note">' + escSum(builtIn.ungroupedNote) + '</p>';
         }
 
         return html;

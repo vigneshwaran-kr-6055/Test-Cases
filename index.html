@@ -163,8 +163,7 @@
         <!-- Upload + Model Selection Card -->
         <div class="upload-card">
             <h2>Summarise Your Test Cases with AI</h2>
-            <p>Upload a test case spreadsheet (<strong>.xlsx</strong> or <strong>.csv</strong>), choose an AI model, and get a clear,
-               concise summary of your entire test suite — organised by use case, with statistics, coverage insights, and key observations.</p>
+            <p>Upload a test case spreadsheet (<strong>.xlsx</strong> or <strong>.csv</strong>), choose an AI model, and get a plain-language feature narrative — describing <em>what the product does</em> and <em>how each feature behaves</em> — so any stakeholder can understand the test suite at a glance.</p>
 
             <div class="drop-zone" id="sum-drop-zone">
                 <input type="file" id="sum-file-input" accept=".xlsx,.csv" aria-label="Upload test case file">
@@ -208,8 +207,8 @@
             <div id="sum-content" class="sum-content-body"></div>
         </div>
 
-        <!-- Use case breakdown section -->
-        <div class="section-card" id="sum-sec-usecase">
+        <!-- Use case breakdown section (hidden — narrative is in the summary section above) -->
+        <div class="section-card" id="sum-sec-usecase" hidden>
             <h2>📋 Use Case Breakdown</h2>
             <div id="sum-usecase-body"></div>
         </div>
