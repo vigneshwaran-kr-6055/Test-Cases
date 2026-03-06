@@ -31,13 +31,38 @@ Live site: **https://test-case-assist-tjrwuase.onslate.eu/**
 
 You already have the `test-case-assist` Slate app configured in **Project-Rainfall** and your GitHub account `vigneshwaran-kr-6055` is already connected.
 
-The deployment was failing because `package.json` was missing a `start` script and the required `express`/`axios` dependencies. This PR fixes that. Once this branch is merged to `main`:
+### Step 1 — Merge this PR to `main`
 
-1. Go to **[catalyst.zoho.com](https://catalyst.zoho.com)** → **Project-Rainfall** → **Slate** in the left sidebar.
-2. Click **Create Deployment** (or wait — Slate may auto-detect the push and deploy).
-3. Slate runs `npm install && npm start`, serving the site at:  
-   **https://test-case-assist-tjrwuase.onslate.eu/**
-4. Click **Deploy to Production** in the top-right bar to promote it.
+The previous deployment was failing because `package.json` was missing a `start` script and the `express`/`axios` dependencies. This PR fixes that. Merge it first.
+
+---
+
+### Step 2 — Fill in the "Create Deployment" form
+
+Go to **[catalyst.zoho.com](https://catalyst.zoho.com)** → **Project-Rainfall** → **Slate** → click **Create Deployment**.
+
+Fill in the form exactly as follows:
+
+| Field | What to enter |
+|---|---|
+| **Deployment Name** | Any name, e.g. `Testcase` |
+| **Deployment Source** | `Branch` |
+| **Branch Name** | `main` |
+| **Auto Deploy** | **Toggle ON** ✅ (so future pushes redeploy automatically) |
+| **Deployment Variables** | **Leave empty** — no environment variables are required |
+
+Click **Deploy**. That's it.
+
+> Slate will run `npm install` then `npm start`. The site will be live at:  
+> **https://test-case-assist-tjrwuase.onslate.eu/**
+
+---
+
+### Step 3 — Promote to Production (optional)
+
+Once the deployment succeeds, click **Deploy to Production** in the top-right bar to make it publicly live.
+
+---
 
 > **From now on**, every push to `main` triggers a new Slate deployment automatically — no manual steps needed.
 
