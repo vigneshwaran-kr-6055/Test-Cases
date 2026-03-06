@@ -1,95 +1,44 @@
-# SDLC Dashboard — Test Case Analyser
+# SDLC Dashboard
 
-Live site: **https://test-case-assist-tjrwuase.onslate.eu/**
+Live site: **https://vigneshwaran-kr-6055.github.io/Test-Cases/**
 
-> The site is hosted on **Zoho Catalyst Slate** using your existing GitHub integration — no CLI and no tokens required.
+## How to publish this repo (GitHub Pages)
 
-## Project structure
+The site deploys automatically via GitHub Actions whenever code is pushed to `main`.
+All the required files are already in place:
 
-```
-├── backend-proxy.js               # Express server — serves the static site + /api/zoho proxy
-├── package.json                   # Node.js app config; "npm start" launches backend-proxy.js
-├── client/
-│   └── app/                       # Static web-client (served by the Express server)
-│       ├── index.html
-│       ├── test-case-analyzer.html
-│       ├── test-case-analyzer.js
-│       ├── test-case-analyzer.css
-│       ├── styles.css
-│       ├── dashboard.html
-│       ├── dashboard.js
-│       ├── dashboard-script.js
-│       ├── dashboard-styles.css
-│       ├── read-excel-file.min.js
-│       └── client-package.json
-└── .github/
-    └── workflows/
-        └── catalyst-deploy.yml    # (kept for reference — Slate deploys directly from GitHub)
-```
+| File | Purpose |
+|------|---------|
+| `.github/workflows/deploy.yml` | Deploys to GitHub Pages on every push to `main` |
+| `.nojekyll` | Tells GitHub Pages to serve files as-is (no Jekyll processing) |
 
-## How deployment works
+### Step-by-step: merge the open PR and go live
 
-You already have the `test-case-assist` Slate app configured in **Project-Rainfall** and your GitHub account `vigneshwaran-kr-6055` is already connected.
+1. Open **[Pull Request #2](https://github.com/vigneshwaran-kr-6055/Test-Cases/pull/2)** in your browser.
+2. Click **"Ready for review"** (it is currently a draft).
+3. Click **"Merge pull request"** → **"Confirm merge"**.
+4. GitHub Actions will automatically run the **Deploy to GitHub Pages** workflow.
+5. After ~1 minute the site will be live at:
+   - **https://vigneshwaran-kr-6055.github.io/Test-Cases/** (dashboard)
+   - **https://vigneshwaran-kr-6055.github.io/Test-Cases/test-case-analyzer.html** (analyser tool)
 
-### Step 1 — Merge this PR to `main`
+### Alternative: trigger the deployment manually (without merging)
 
-The previous deployment was failing because `package.json` was missing a `start` script and the `express`/`axios` dependencies. This PR fixes that. Merge it first.
-
----
-
-### Step 2 — Fill in the "Create Deployment" form
-
-Go to **[catalyst.zoho.com](https://catalyst.zoho.com)** → **Project-Rainfall** → **Slate** → click **Create Deployment**.
-
-Fill in the form exactly as follows:
-
-| Field | What to enter |
-|---|---|
-| **Deployment Name** | Any name, e.g. `Testcase` |
-| **Deployment Source** | `Branch` |
-| **Branch Name** | `main` |
-| **Auto Deploy** | **Toggle ON** ✅ (so future pushes redeploy automatically) |
-| **Deployment Variables** | **Leave empty** — no environment variables are required |
-
-Click **Deploy**. That's it.
-
-> Slate will run `npm install` then `npm start`. The site will be live at:  
-> **https://test-case-assist-tjrwuase.onslate.eu/**
-
----
-
-### Step 3 — Promote to Production (optional)
-
-Once the deployment succeeds, click **Deploy to Production** in the top-right bar to make it publicly live.
-
----
-
-> **From now on**, every push to `main` triggers a new Slate deployment automatically — no manual steps needed.
-
-## Making enhancements after deployment
-
-All site source files live in this GitHub repository under `client/app/`. The full enhancement loop is:
-
-```
-Edit files in client/app/  →  open / merge a PR  →  push to main  →  Slate auto-redeploys
-```
-
-- **GitHub Copilot** can create PRs with new features, bug fixes, and improvements exactly as it does today.
-- You can raise an issue or describe a change (e.g. "add a dark mode"), and Copilot will update the relevant files in `client/app/` via a PR.
-- Once the PR is merged to `main`, Catalyst detects the change and redeploys — no manual steps needed.
-
-**GitHub is the source of truth. Catalyst is just the host.**
+1. Go to **[Actions → Deploy to GitHub Pages](https://github.com/vigneshwaran-kr-6055/Test-Cases/actions/workflows/deploy.yml)**.
+2. Click **"Run workflow"**.
+3. Select branch **`copilot/fix-published-link-error`** from the dropdown.
+4. Click **"Run workflow"** — the site will deploy within ~1 minute.
 
 ## Local development
 
-Clone the repo and open `client/app/index.html` directly in your browser — no build step needed.
+Clone the repo and open `index.html` directly in your browser — no build step needed.
 
 ```bash
 git clone https://github.com/vigneshwaran-kr-6055/Test-Cases.git
-cd Test-Cases/client/app
-open index.html          # macOS
-# or: start index.html   (Windows)
-# or: xdg-open index.html (Linux)
+cd Test-Cases
+open index.html   # macOS
+# or: start index.html  (Windows)
+# or: xdg-open index.html  (Linux)
 ```
 
 ## API Integration Guide
