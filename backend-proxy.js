@@ -1,14 +1,21 @@
 'use strict';
 
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const axios = require('axios');
-const bodyParser = require('body-parser');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
-app.use(bodyParser.json());
+// Read index.html once at startup so the SPA fallback avoids per-request FS access
+const indexHtml = fs.readFileSync(path.join(__dirname, 'client', 'app', 'index.html'));
+
+// Serve the static web client
+app.use(express.static(path.join(__dirname, 'client', 'app')));
+
+// Parse JSON bodies for the proxy API
+app.use(express.json());
 
 // Proxy route to handle Zoho CRM API requests
 app.post('/api/zoho', async (req, res) => {
@@ -22,10 +29,17 @@ app.post('/api/zoho', async (req, res) => {
         const response = await axios.post(endpoint, data, { headers });
         return res.json(response.data);
     } catch (error) {
-        return res.status(error.response.status).json({ message: error.message });
+        const status = error.response?.status || 500;
+        return res.status(status).json({ message: error.message });
     }
+});
+
+// Fallback: return the cached index.html for any unmatched route (SPA support)
+app.get('*', (req, res) => {
+    res.type('html').send(indexHtml);
 });
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
