@@ -25,7 +25,6 @@
     <h1>Test Case Assist</h1>
     <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
         <span class="toggle-icon">🌙</span>
-        <span class="toggle-text">Dark Mode</span>
     </button>
 </header>
 
@@ -275,13 +274,10 @@
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('theme', theme);
         var icon = toggle.querySelector('.toggle-icon');
-        var text = toggle.querySelector('.toggle-text');
         if (theme === 'dark') {
             icon.textContent = '☀️';
-            text.textContent = 'Light Mode';
         } else {
             icon.textContent = '🌙';
-            text.textContent = 'Dark Mode';
         }
         try { iframe.contentWindow.postMessage({ type: 'theme-change', theme: theme }, window.location.origin); } catch (e) {}
     }

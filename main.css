@@ -662,7 +662,54 @@ tbody tr:hover { background: var(--drop-hover-bg); transition: background 0.15s;
     border-color: #fc8181;
 }
 
-/* ===== History Detail Modal ===== */
+/* ===== History Pagination ===== */
+.hist-pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin: 18px 0 6px;
+    flex-wrap: wrap;
+}
+
+.hist-page-btn {
+    min-width: 34px;
+    height: 34px;
+    padding: 0 10px;
+    border-radius: 8px;
+    border: 1.5px solid var(--border);
+    background: var(--card-bg);
+    color: var(--text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    line-height: 1;
+}
+
+.hist-page-btn:hover:not(:disabled) {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.hist-page-btn-active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+}
+
+.hist-page-btn:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+}
+
+.hist-page-arrow {
+    font-size: 1.15rem;
+    padding: 0 12px;
+}
+
+
 .hist-modal-overlay {
     position: fixed;
     inset: 0;

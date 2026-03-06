@@ -17,6 +17,12 @@
     const GEN_KEY = 'tca_gen_history';
     const REV_KEY = 'tca_rev_history';
     const SUM_KEY = 'tca_sum_history';
+    const PAGE_SIZE = 5;
+
+    /* ─────────────────────────────────────────────
+       Pagination state (current page per category)
+    ───────────────────────────────────────────── */
+    var pageState = { generated: 1, reviewed: 1, summarised: 1 };
 
     /* ─────────────────────────────────────────────
        Helpers
@@ -278,7 +284,15 @@
             return;
         }
 
-        entries.forEach(function (entry, idx) {
+        var totalPages = Math.ceil(entries.length / PAGE_SIZE);
+        var currentPage = pageState[type] || 1;
+        if (currentPage > totalPages || currentPage < 1) currentPage = Math.max(1, totalPages);
+        pageState[type] = currentPage;
+
+        var start = (currentPage - 1) * PAGE_SIZE;
+        var pageEntries = entries.slice(start, start + PAGE_SIZE);
+
+        pageEntries.forEach(function (entry, idx) {
             var card = document.createElement('div');
             card.className = 'hist-entry-card';
             card.setAttribute('data-id', entry.id);
@@ -347,11 +361,58 @@
                 var idx = all.findIndex(function (e) { return e.id === entry.id; });
                 if (idx !== -1) all.splice(idx, 1);
                 saveHistory(key, all);
+                // Adjust page if current page is now out of range
+                var newTotalPages = Math.ceil(all.length / PAGE_SIZE);
+                if (newTotalPages === 0 || pageState[type] > newTotalPages) pageState[type] = Math.max(1, newTotalPages);
                 renderHistory();
             });
 
             containerEl.appendChild(card);
         });
+
+        // Render pagination controls if more than one page
+        if (totalPages > 1) {
+            var nav = document.createElement('div');
+            nav.className = 'hist-pagination';
+
+            var prevBtn = document.createElement('button');
+            prevBtn.className = 'hist-page-btn hist-page-arrow';
+            prevBtn.textContent = '‹';
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.setAttribute('aria-label', 'Previous page');
+            prevBtn.addEventListener('click', function () {
+                pageState[type] = currentPage - 1;
+                renderHistory();
+            });
+            nav.appendChild(prevBtn);
+
+            for (var p = 1; p <= totalPages; p++) {
+                (function (pageNum) {
+                    var btn = document.createElement('button');
+                    btn.className = 'hist-page-btn' + (pageNum === currentPage ? ' hist-page-btn-active' : '');
+                    btn.textContent = pageNum;
+                    btn.setAttribute('aria-label', 'Page ' + pageNum);
+                    btn.addEventListener('click', function () {
+                        pageState[type] = pageNum;
+                        renderHistory();
+                    });
+                    nav.appendChild(btn);
+                }(p));
+            }
+
+            var nextBtn = document.createElement('button');
+            nextBtn.className = 'hist-page-btn hist-page-arrow';
+            nextBtn.textContent = '›';
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.setAttribute('aria-label', 'Next page');
+            nextBtn.addEventListener('click', function () {
+                pageState[type] = currentPage + 1;
+                renderHistory();
+            });
+            nav.appendChild(nextBtn);
+
+            containerEl.appendChild(nav);
+        }
     }
 
     /* ─────────────────────────────────────────────
@@ -414,6 +475,7 @@
             clearGenBtn.addEventListener('click', function () {
                 if (confirm('Clear all generated test case history?')) {
                     localStorage.removeItem(GEN_KEY);
+                    pageState.generated = 1;
                     renderHistory();
                 }
             });
@@ -424,6 +486,7 @@
             clearRevBtn.addEventListener('click', function () {
                 if (confirm('Clear all reviewed test case history?')) {
                     localStorage.removeItem(REV_KEY);
+                    pageState.reviewed = 1;
                     renderHistory();
                 }
             });
@@ -434,6 +497,7 @@
             clearSumBtn.addEventListener('click', function () {
                 if (confirm('Clear all test case summary history?')) {
                     localStorage.removeItem(SUM_KEY);
+                    pageState.summarised = 1;
                     renderHistory();
                 }
             });
