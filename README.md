@@ -79,6 +79,21 @@ Promote to production from the **Catalyst Console → Deployments** tab.
 > - Request URL: `/ {path1: (.*)}`
 > - Target: Web Client Hosting → `/app/{path1}`
 
+## Making enhancements after deployment
+
+Deploying to Catalyst does **not** change how the site is developed. All site source files continue to live in this GitHub repository under `client/app/`. The full enhancement loop is:
+
+```
+Edit files in client/app/  →  open / merge a PR  →  push to main  →  GitHub Actions redeploys to Catalyst automatically
+```
+
+This means:
+- **GitHub Copilot** can still create PRs with new features, bug fixes, and improvements exactly as it does today — nothing changes on the development side.
+- You can raise an issue or describe a change (e.g. "add a dark mode", "improve the gap detection logic"), and Copilot will update the relevant files in `client/app/` via a PR.
+- Once the PR is merged to `main`, the updated site is live on Catalyst within a minute — no manual deployment step needed.
+
+**Summary:** GitHub is the source of truth. Catalyst is just the host. Enhancements always happen in GitHub, and Catalyst always reflects whatever is on `main`.
+
 ## Local development
 
 Clone the repo and open `client/app/index.html` directly in your browser — no build step needed.
