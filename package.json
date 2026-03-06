@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "backend-proxy.js",
   "scripts": {
+    "build": "echo 'No build step required'",
     "start": "node backend-proxy.js"
   },
   "dependencies": {
