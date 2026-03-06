@@ -8,11 +8,23 @@ const axios = require('axios');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Serve the static web client from the dedicated public directory
+const PUBLIC_DIR = path.join(__dirname, 'public');
+
+// Guard: fail fast with a helpful message if the build step was skipped
+if (!fs.existsSync(path.join(PUBLIC_DIR, 'index.html'))) {
+    console.error(
+        'ERROR: public/index.html not found. ' +
+        'Run "npm run build" to generate static assets before starting the server.'
+    );
+    process.exit(1);
+}
+
 // Read index.html once at startup so the SPA fallback avoids per-request FS access
-const indexHtml = fs.readFileSync(path.join(__dirname, 'client', 'app', 'index.html'));
+const indexHtml = fs.readFileSync(path.join(PUBLIC_DIR, 'index.html'));
 
 // Serve the static web client
-app.use(express.static(path.join(__dirname, 'client', 'app')));
+app.use(express.static(PUBLIC_DIR));
 
 // Parse JSON bodies for the proxy API
 app.use(express.json());
