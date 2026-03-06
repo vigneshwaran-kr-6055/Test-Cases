@@ -26,47 +26,132 @@ Live site: **https://test-case-analyser.production.catalystserverless.com/app/**
         └── catalyst-deploy.yml    # Auto-deploys to Catalyst on push to main
 ```
 
-## How to publish to Zoho Catalyst
+## Step-by-step: how to host on Zoho Catalyst
 
-### Prerequisites
+Follow these steps **once** to get the site live. After that, every future change you or Copilot makes will deploy automatically.
 
-1. Sign up / log in at [catalyst.zoho.com](https://catalyst.zoho.com).
-2. Install the Catalyst CLI:
+---
+
+### Step 1 — Create a Zoho account and sign in to Catalyst
+
+1. Go to **[catalyst.zoho.com](https://catalyst.zoho.com)**.
+2. Click **Sign Up** if you don't have a Zoho account, or **Sign In** if you do.
+
+---
+
+### Step 2 — Create a Catalyst project
+
+1. Inside the Catalyst Console, click **Create Project**.
+2. Name the project exactly **`test-case-analyser`** (lowercase, hyphenated).
+3. Choose the **Spark** (free) plan.
+4. Click **Create**.
+
+---
+
+### Step 3 — Collect your three IDs
+
+You need three numbers from the Catalyst Console. Open the project you just created and note them down:
+
+| ID | Where to find it |
+|---|---|
+| **Project ID** | Catalyst Console → your project → **Settings** → Project Details |
+| **Org ID** | Catalyst Console → top-right profile menu → **Organization Settings** |
+| **Web Client ID** | Catalyst Console → your project → **Web Client** → click your client → **App Settings** |
+
+---
+
+### Step 4 — Update `catalyst.json` in GitHub
+
+1. Open this repository on GitHub.
+2. Click on the file **`catalyst.json`** and then click the ✏️ **Edit** (pencil) icon.
+3. Replace the three placeholder values with the real IDs you noted in Step 3:
+
+   ```json
+   {
+     "project_name": "test-case-analyser",
+     "project_id": "1234567890",
+     "org_id":     "9876543210",
+     ...
+     "web_client": [
+       {
+         "id": "1122334455",
+         ...
+       }
+     ]
+   }
+   ```
+
+4. Scroll down and click **Commit changes** (commit directly to `main`).
+
+---
+
+### Step 5 — Install Node.js and the Catalyst CLI (on your computer)
+
+> **Skip this step** if you only want auto-deployment via GitHub Actions and never need to deploy manually.
+
+1. Download and install **Node.js** from [nodejs.org](https://nodejs.org) (LTS version).
+2. Open a terminal (Command Prompt / PowerShell on Windows, Terminal on Mac/Linux) and run:
+
    ```bash
    npm install -g zcatalyst-cli
    ```
-3. Create a new Catalyst project named **`test-case-analyser`** in the Catalyst console.
-4. Note down your **Project ID**, **Org ID**, and **Web Client ID** from the project settings.
 
-### One-time setup
+3. Log in to Catalyst from the terminal:
 
-1. Open `catalyst.json` and replace the placeholder values with your actual IDs:
-
-   | Placeholder | Where to find it |
-   |---|---|
-   | `YOUR_PROJECT_ID` | Catalyst Console → Project Settings |
-   | `YOUR_ORG_ID` | Catalyst Console → Organization Settings |
-   | `YOUR_CLIENT_ID` | Catalyst Console → Web Client → App settings |
-
-2. Add a GitHub Actions secret named **`CATALYST_TOKEN`**:
    ```bash
-   # Generate a token locally (run once, requires CLI login)
+   catalyst login
+   ```
+
+   This opens a browser window — sign in with your Zoho account.
+
+---
+
+### Step 6 — Generate a Catalyst token and add it to GitHub
+
+This allows GitHub Actions to deploy on your behalf automatically.
+
+1. In the same terminal, run:
+
+   ```bash
    catalyst token:generate
    ```
-   Then go to **GitHub → Settings → Secrets → Actions** and add `CATALYST_TOKEN`.
 
-### Automatic deployment (CI/CD)
+   Copy the token that is printed.
 
-Push to `main` — GitHub Actions runs `.github/workflows/catalyst-deploy.yml` and deploys to Catalyst automatically.
+2. Go to your GitHub repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
+3. Set:
+   - **Name:** `CATALYST_TOKEN`
+   - **Secret:** *(paste the token you copied)*
+4. Click **Add secret**.
 
-### Manual deployment
+---
 
-```bash
-catalyst login          # authenticate once
-catalyst deploy         # deploy to development environment
-```
+### Step 7 — Trigger the first deployment
 
-Promote to production from the **Catalyst Console → Deployments** tab.
+1. Go to your GitHub repository → **Actions** tab.
+2. Click **Deploy to Zoho Catalyst** in the left panel.
+3. Click **Run workflow** → **Run workflow**.
+
+GitHub Actions will install the Catalyst CLI and push the site to Catalyst. The run takes about 1–2 minutes.
+
+---
+
+### Step 8 — Promote to production
+
+The workflow deploys to the **Development** environment first.
+
+1. In the Catalyst Console, open your project.
+2. Go to **Deployments** and click **Promote to Production**.
+
+Your site is now live at:
+
+> **https://test-case-analyser.production.catalystserverless.com/app/**
+
+---
+
+### That's it! 🎉
+
+From now on, every time a change is merged to `main` (whether you make it or Copilot makes it), GitHub Actions redeploys the site to Catalyst automatically — no manual steps needed.
 
 ## URL
 
