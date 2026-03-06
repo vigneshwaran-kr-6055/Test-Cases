@@ -28,156 +28,73 @@ Live site: **https://test-case-analyser.production.catalystserverless.com/app/**
 
 ## Step-by-step: how to host on Zoho Catalyst
 
-Follow these steps **once** to get the site live. After that, every future change you or Copilot makes will deploy automatically.
+> **You already have GitHub connected to Catalyst — so this is only 4 steps and requires no installs, no CLI, and no tokens.**
 
 ---
 
-### Step 1 — Create a Zoho account and sign in to Catalyst
+### Step 1 — Open your Catalyst project and go to Web Client
 
-1. Go to **[catalyst.zoho.com](https://catalyst.zoho.com)**.
-2. Click **Sign Up** if you don't have a Zoho account, or **Sign In** if you do.
-
----
-
-### Step 2 — Create a Catalyst project
-
-1. Inside the Catalyst Console, click **Create Project**.
-2. Name the project exactly **`test-case-analyser`** (lowercase, hyphenated).
-3. Choose the **Spark** (free) plan.
-4. Click **Create**.
+1. Sign in at **[catalyst.zoho.com](https://catalyst.zoho.com)**.
+2. Open your project (e.g. **Project-Rainfall**).
+3. In the left sidebar, click **Web Client**.
 
 ---
 
-### Step 3 — Collect your three IDs
+### Step 2 — Create a new Web Client linked to this GitHub repo
 
-You need three numbers from the Catalyst Console. Open the project you just created and note them down:
+1. Click **Create Web Client** (or the **+** button).
+2. Give it any name (e.g. `app`).
+3. Under **Source**, choose **Git Repository**.
+4. Select your connected GitHub account (**vigneshwaran-kr-6055**).
+5. Pick the repository **Test-Cases**.
+6. Set **Branch** to `main`.
+7. Set **Build / App Folder** to `client/app`.
+8. Leave **Build Command** blank (this is a static site — no build step needed).
+9. Click **Create**.
 
-| ID | Where to find it |
-|---|---|
-| **Project ID** | Catalyst Console → your project → **Settings** → Project Details |
-| **Org ID** | Catalyst Console → top-right profile menu → **Organization Settings** |
-| **Web Client ID** | Catalyst Console → your project → **Web Client** → click your client → **App Settings** |
-
----
-
-### Step 4 — Update `catalyst.json` in GitHub
-
-1. Open this repository on GitHub.
-2. Click on the file **`catalyst.json`** and then click the ✏️ **Edit** (pencil) icon.
-3. Replace the three placeholder values with the real IDs you noted in Step 3:
-
-   ```json
-   {
-     "project_name": "test-case-analyser",
-     "project_id": "1234567890",
-     "org_id":     "9876543210",
-     ...
-     "web_client": [
-       {
-         "id": "1122334455",
-         ...
-       }
-     ]
-   }
-   ```
-
-4. Scroll down and click **Commit changes** (commit directly to `main`).
+Catalyst will pull the code from GitHub and deploy it immediately. ✅
 
 ---
 
-### Step 5 — Install Node.js and the Catalyst CLI (on your computer)
+### Step 3 — Note your site URL
 
-> **Skip this step** if you only want auto-deployment via GitHub Actions and never need to deploy manually.
+Once the deployment finishes, Catalyst shows you the URL. It will look like:
 
-1. Download and install **Node.js** from [nodejs.org](https://nodejs.org) (LTS version).
-2. Open a terminal (Command Prompt / PowerShell on Windows, Terminal on Mac/Linux) and run:
+> `https://<your-project>.catalystserverless.com/app/`
 
-   ```bash
-   npm install -g zcatalyst-cli
-   ```
-
-3. Log in to Catalyst from the terminal:
-
-   ```bash
-   catalyst login
-   ```
-
-   This opens a browser window — sign in with your Zoho account.
+Click it to confirm the site loads.
 
 ---
 
-### Step 6 — Generate a Catalyst token and add it to GitHub
+### Step 4 — Promote to Production (optional)
 
-This allows GitHub Actions to deploy on your behalf automatically.
+The first deploy goes to the **Development** environment.  
+To make it publicly live on the Production URL:
 
-1. In the same terminal, run:
+1. In the Catalyst Console, click **Deployments** in the left sidebar.
+2. Click **Promote to Production**.
 
-   ```bash
-   catalyst token:generate
-   ```
-
-   Copy the token that is printed.
-
-2. Go to your GitHub repository → **Settings** → **Secrets and variables** → **Actions** → **New repository secret**.
-3. Set:
-   - **Name:** `CATALYST_TOKEN`
-   - **Secret:** *(paste the token you copied)*
-4. Click **Add secret**.
-
----
-
-### Step 7 — Trigger the first deployment
-
-1. Go to your GitHub repository → **Actions** tab.
-2. Click **Deploy to Zoho Catalyst** in the left panel.
-3. Click **Run workflow** → **Run workflow**.
-
-GitHub Actions will install the Catalyst CLI and push the site to Catalyst. The run takes about 1–2 minutes.
-
----
-
-### Step 8 — Promote to production
-
-The workflow deploys to the **Development** environment first.
-
-1. In the Catalyst Console, open your project.
-2. Go to **Deployments** and click **Promote to Production**.
-
-Your site is now live at:
-
-> **https://test-case-analyser.production.catalystserverless.com/app/**
+Your site is now live at the Production URL. 🎉
 
 ---
 
 ### That's it! 🎉
 
-From now on, every time a change is merged to `main` (whether you make it or Copilot makes it), GitHub Actions redeploys the site to Catalyst automatically — no manual steps needed.
-
-## URL
-
-| Environment | URL |
-|---|---|
-| Development | `https://test-case-analyser-development.catalystserverless.com/app/` |
-| Production  | `https://test-case-analyser.production.catalystserverless.com/app/`  |
-
-> **Tip:** To remove the `/app` suffix, add an API Gateway rule in the Catalyst Console:
-> - Request URL: `/ {path1: (.*)}`
-> - Target: Web Client Hosting → `/app/{path1}`
+From now on, **every time a change is merged to `main`** (whether you make it or Copilot makes it), Catalyst automatically pulls the latest code and redeploys — no manual steps ever needed again.
 
 ## Making enhancements after deployment
 
-Deploying to Catalyst does **not** change how the site is developed. All site source files continue to live in this GitHub repository under `client/app/`. The full enhancement loop is:
+All site source files live in this GitHub repository under `client/app/`. The full enhancement loop is:
 
 ```
-Edit files in client/app/  →  open / merge a PR  →  push to main  →  GitHub Actions redeploys to Catalyst automatically
+Edit files in client/app/  →  open / merge a PR  →  push to main  →  Catalyst auto-redeploys
 ```
 
-This means:
-- **GitHub Copilot** can still create PRs with new features, bug fixes, and improvements exactly as it does today — nothing changes on the development side.
-- You can raise an issue or describe a change (e.g. "add a dark mode", "improve the gap detection logic"), and Copilot will update the relevant files in `client/app/` via a PR.
-- Once the PR is merged to `main`, the updated site is live on Catalyst within a minute — no manual deployment step needed.
+- **GitHub Copilot** can create PRs with new features, bug fixes, and improvements exactly as it does today.
+- You can raise an issue or describe a change (e.g. "add a dark mode"), and Copilot will update the relevant files in `client/app/` via a PR.
+- Once the PR is merged to `main`, Catalyst detects the change and redeploys — no manual steps needed.
 
-**Summary:** GitHub is the source of truth. Catalyst is just the host. Enhancements always happen in GitHub, and Catalyst always reflects whatever is on `main`.
+**GitHub is the source of truth. Catalyst is just the host.**
 
 ## Local development
 
