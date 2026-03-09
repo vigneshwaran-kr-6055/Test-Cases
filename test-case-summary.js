@@ -413,36 +413,26 @@ function themeCapability(key, scenarios) {
 /**
  * Convert a list of named use-case / feature-area labels into concise capability bullets.
  * Bullets are sorted by test-case count (most-tested areas first) so the most important
- * areas appear at the top.  When there are more use-cases than maxCaps, the last bullet
- * mentions how many additional areas are covered.
+ * areas appear at the top.  ALL areas are returned — no overflow truncation — so the
+ * user always sees the full picture.  Each bullet includes the test-case count in
+ * parentheses to give immediate context at a glance.
  *
  * @param {string[]} ucList   - Distinct, non-empty use-case names.
  * @param {Object}   ucCounts - Map of { useCase: count }.
- * @param {number}   maxCaps  - Maximum number of bullet strings to return.
  * @returns {string[]}
  */
-function useCasesToCapabilities(ucList, ucCounts, maxCaps) {
+function useCasesToCapabilities(ucList, ucCounts) {
     /* Sort: highest test-case count first, then alphabetical for ties */
     var sorted = ucList.slice().sort(function (a, b) {
         var diff = (ucCounts[b] || 0) - (ucCounts[a] || 0);
         return diff !== 0 ? diff : a.localeCompare(b);
     });
 
-    var shown    = sorted.slice(0, maxCaps);
-    var overflow = sorted.length - shown.length;
-    var caps     = [];
-
-    shown.forEach(function (uc, i) {
-        var isLast = (i === shown.length - 1);
-        if (isLast && overflow > 0) {
-            caps.push(capFirst(uc) + ' — and ' + overflow +
-                      ' more feature area' + (overflow > 1 ? 's' : '') + '.');
-        } else {
-            caps.push(capFirst(uc) + '.');
-        }
+    /* Return every area with its test-case count — no vague "and N more" truncation */
+    return sorted.map(function (uc) {
+        var count = ucCounts[uc] || 0;
+        return capFirst(uc) + ' (' + count + ' test' + (count !== 1 ? 's' : '') + ').';
     });
-
-    return caps;
 }
 
 /* ─────────────────────────────────────────────
@@ -599,7 +589,7 @@ function builtInSummarise(rows, cols, stats) {
          * areas sorted by test coverage so stakeholders see the most important
          * areas first.
          */
-        capabilities = useCasesToCapabilities(ucList, ucCounts, SUM_MAX_CAPABILITIES);
+        capabilities = useCasesToCapabilities(ucList, ucCounts);
     } else {
         /*
          * Strategy 2 — theme-based keyword analysis (fallback when no named
@@ -619,9 +609,10 @@ function builtInSummarise(rows, cols, stats) {
      * Priority order:
      *  1. 1 named use-case area  → name it explicitly (most reliable for single-area files).
      *  2. 2 named use-case areas → name both (more reliable than a keyword guess).
-     *  3. Detected subject keyword (any # of named areas or no use-case column).
-     *  4. Count of named areas with a sample list.
-     *  5. Generic scenario count fallback. */
+     *  3. ≥3 named areas present (Strategy 1) → state exact count so user knows scope.
+     *  4. Detected subject keyword (no use-case column or < 3 named areas).
+     *  5. Count of named areas with a full list.
+     *  6. Generic scenario count fallback. */
     var ucListFull = stats.useCases;
     var intro;
     if (ucList.length === 1) {
@@ -633,13 +624,17 @@ function builtInSummarise(rows, cols, stats) {
                 '</strong> validated across ' +
                 '<strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>' +
                 (capabilities.length > 0 ? ' — key capabilities below.' : '.');
+    } else if (ucList.length >= 3) {
+        intro = 'Covers <strong>' + ucList.length + ' feature area' + (ucList.length !== 1 ? 's' : '') + '</strong>' +
+                ' across <strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>' +
+                ' — all areas listed below, sorted by test coverage.';
     } else if (subject) {
         intro = '<strong>' + escSum(subject) + '</strong> feature validated across ' +
                 '<strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>' +
                 (capabilities.length > 0 ? ' — key capabilities below.' : '.');
     } else if (ucListFull.length > 0) {
         intro = 'Covers <strong>' + ucListFull.length + ' feature area' + (ucListFull.length !== 1 ? 's' : '') + '</strong>: ' +
-                ucListFull.slice(0, SUM_MAX_USE_CASES_SHOWN).map(escSum).join(', ') + (ucListFull.length > SUM_MAX_USE_CASES_SHOWN ? ', and more' : '') + '.';
+                ucListFull.map(escSum).join(', ') + '.';
     } else {
         intro = 'Test suite covers <strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>.';
     }
@@ -1083,11 +1078,34 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
         html += '<p class="sum-narrative-intro">' + builtIn.intro + '</p>';
 
         if (builtIn.capabilities && builtIn.capabilities.length > 0) {
+            var caps = builtIn.capabilities;
+            var primaryCaps  = caps.slice(0, SUM_MAX_CAPABILITIES);
+            var overflowCaps = caps.slice(SUM_MAX_CAPABILITIES);
+
             html += '<ul class="sum-capability-list">';
-            builtIn.capabilities.forEach(function (cap) {
+            primaryCaps.forEach(function (cap) {
                 html += '<li>' + escSum(cap) + '</li>';
             });
             html += '</ul>';
+
+            /* When there are more areas than the fold limit, show them in a
+             * collapsible block so the user can always see everything without
+             * the UI being cluttered on first glance. */
+            if (overflowCaps.length > 0) {
+                html += '<details class="sum-overflow-areas" style="margin-top:4px;padding:10px 14px;'
+                    + 'border:1px solid var(--border,#e0e0e0);border-radius:8px;background:var(--card-bg,#fafafa)">';
+                html += '<summary style="cursor:pointer;font-weight:600;font-size:.88rem;'
+                    + 'color:var(--accent,#1a73e8);list-style:none;outline:none">'
+                    + '📂 Show all ' + caps.length + ' feature areas'
+                    + ' <span style="font-weight:400;font-size:.8rem;opacity:.7">(click to expand)</span>'
+                    + '</summary>';
+                html += '<ul style="margin:8px 0 0 0;padding-left:20px;line-height:1.8">';
+                overflowCaps.forEach(function (cap) {
+                    html += '<li style="font-size:.88rem">' + escSum(cap) + '</li>';
+                });
+                html += '</ul>';
+                html += '</details>';
+            }
         }
 
         /* Coverage quality insights (collapsible) */
