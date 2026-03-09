@@ -446,6 +446,76 @@ function useCasesToCapabilities(ucList, ucCounts, maxCaps) {
 }
 
 /* ─────────────────────────────────────────────
+   Test quality analyser
+   Assesses how comprehensively the uploaded test
+   suite covers the key test-type dimensions
+   (positive, negative, boundary, security, etc.)
+   and returns a quality label with actionable
+   coverage insights.
+───────────────────────────────────────────── */
+/**
+ * Analyse the overall quality and coverage breadth of the uploaded test suite.
+ *
+ * @param {Object[]} rows - Parsed row objects.
+ * @param {Object}   cols - Detected column map.
+ * @returns {{ qualityLabel: string, qualityColor: string, score: number, insights: string[] }}
+ */
+function analyzeTestQuality(rows, cols) {
+    /* Build a single combined text from all test-case name + steps + expected fields */
+    var allText = rows.map(function (r) {
+        var parts = [];
+        if (cols.testCase)       parts.push(String(r[cols.testCase]       || ''));
+        if (cols.steps)          parts.push(String(r[cols.steps]          || ''));
+        if (cols.expectedResult) parts.push(String(r[cols.expectedResult] || ''));
+        return parts.join(' ');
+    }).join(' ').toLowerCase();
+
+    /* Detect which test-type dimensions are present */
+    var hasPositive    = /\b(valid|success|successful|positive|happy[- ]?path|correct|should work|verify that|able to|complete|completed)\b/.test(allText);
+    var hasNegative    = /\b(invalid|negative|incorrect|wrong|bad input|fail|reject|error message|not allowed|cannot|unable|blocked|denied)\b/.test(allText);
+    var hasBoundary    = /\b(boundary|limit|min\b|max\b|maximum|minimum|overflow|empty|zero|null|length|edge[- ]?case|out[\s-]of[\s-]range)\b/.test(allText);
+    var hasSecurity    = /\b(sql injection|xss|csrf|unauthorized|authentication|authorization|brute[- ]?force|encrypt|token|session|privilege|injection)\b/.test(allText);
+    var hasPerformance = /\b(performance|load[\s-]?test|stress[\s-]?test|latency|response[\s-]?time|concurrent|timeout|throughput|sla)\b/.test(allText);
+    var hasUi          = /\b(display|visible|layout|responsive|button|navigation|screen|interface|render|style|color|font)\b/.test(allText);
+    var hasAccessibility = /\b(accessibility|keyboard[\s-]?navigation|screen[\s-]?reader|aria|wcag|a11y|tab[\s-]?order|focus|contrast)\b/.test(allText);
+    var hasDataIntegrity = /\b(persist|data[\s-]?integrity|consistent|accurate|data[\s-]?loss|corrupt|reload|refresh|survives)\b/.test(allText);
+    var hasStateTrans  = /\b(status|workflow|state|transition|approve|reject|pending|active|inactive|draft|publish)\b/.test(allText);
+
+    /* Score (0–9) — one point per dimension present */
+    var dimensions = [hasPositive, hasNegative, hasBoundary, hasSecurity, hasPerformance,
+                      hasUi, hasAccessibility, hasDataIntegrity, hasStateTrans];
+    var score = dimensions.filter(Boolean).length;
+
+    /* Quality label and colour */
+    var qualityLabel, qualityColor;
+    if (score >= 7)      { qualityLabel = 'Excellent Coverage'; qualityColor = '#1b5e20'; }
+    else if (score >= 5) { qualityLabel = 'Good Coverage';      qualityColor = '#2e7d32'; }
+    else if (score >= 3) { qualityLabel = 'Moderate Coverage';  qualityColor = '#e65100'; }
+    else if (score >= 2) { qualityLabel = 'Basic Coverage';     qualityColor = '#bf360c'; }
+    else                 { qualityLabel = 'Minimal Coverage';   qualityColor = '#b71c1c'; }
+
+    /* Per-dimension insights */
+    var insights = [];
+    if (hasPositive)      insights.push('✅ Positive / happy-path scenarios detected');
+    else                  insights.push('⚠ No clear positive/happy-path tests found — consider adding successful workflow tests');
+    if (hasNegative)      insights.push('✅ Negative / error-path scenarios detected');
+    else                  insights.push('⚠ No negative / invalid-input tests found — add tests for error messages and rejections');
+    if (hasBoundary)      insights.push('✅ Boundary / edge-case tests detected');
+    else                  insights.push('⚠ No boundary value tests found — consider min/max/empty/null input coverage');
+    if (hasSecurity)      insights.push('✅ Security-related tests detected');
+    else                  insights.push('⚠ No security tests found — consider authentication, authorization, and injection tests');
+    if (hasPerformance)   insights.push('✅ Performance / load tests detected');
+    else                  insights.push('⚠ No performance tests found — consider response time, load, and timeout scenarios');
+    if (hasUi)            insights.push('✅ UI / visual validation tests detected');
+    if (hasAccessibility) insights.push('✅ Accessibility (WCAG) tests detected');
+    else                  insights.push('⚠ No accessibility tests found — consider keyboard navigation and ARIA coverage');
+    if (hasDataIntegrity) insights.push('✅ Data integrity / persistence tests detected');
+    if (hasStateTrans)    insights.push('✅ State transition / workflow tests detected');
+
+    return { qualityLabel: qualityLabel, qualityColor: qualityColor, score: score, insights: insights };
+}
+
+/* ─────────────────────────────────────────────
    Built-in summarisation engine
    Produces a brief user-story narrative (≤ 15 lines, < 2 min read).
    No category headers — just an intro sentence and a short
@@ -584,7 +654,9 @@ function buildAIPrompt(rows, cols, stats) {
     var total = stats.total;
     var ucList = stats.useCases;
 
-    var prompt = 'You are a senior QA engineer. Read the test case data below and write a clear, concise feature narrative — in the style of user stories or use cases — so that any stakeholder can immediately understand what the product does and how it behaves.\n\n';
+    var prompt = 'You are a senior QA engineer with deep expertise in test coverage analysis. '
+        + 'Read the test case data below and produce a clear, concise summary so any stakeholder can '
+        + 'immediately understand what the product does, what is well-covered, and what may be missing.\n\n';
 
     prompt += '## Test Suite Data\n';
     prompt += '- Total test cases: ' + total + '\n';
@@ -607,14 +679,14 @@ function buildAIPrompt(rows, cols, stats) {
     }
 
     prompt += '\n## Your Task\n';
-    prompt += 'Write a **brief user-story style summary** of what this feature / product does.\n';
-    prompt += 'Requirements:\n';
-    prompt += '- Maximum 10–15 lines total. No categories, no headers, no numbered sections.\n';
-    prompt += '- Open with 1–2 sentences describing the overall feature and its main user journey.\n';
-    prompt += '- Follow with 4–6 short bullet points (one per key capability or flow).\n';
-    prompt += '- Each bullet must be one concise line — describe what the user CAN DO or what the system DOES.\n';
-    prompt += '- Do NOT list individual test case names, statistics, severity labels, or pass/fail numbers.\n';
-    prompt += '- Plain language, easily readable by any non-technical stakeholder in under 2 minutes.\n';
+    prompt += 'Write a **brief, plain-language summary** structured as follows:\n';
+    prompt += '1. **Feature Narrative** (2–3 sentences): Describe what this feature/product does and its primary user journey in plain language any stakeholder can understand.\n';
+    prompt += '2. **Key Capabilities** (4–6 bullet points): One bullet per distinct capability or user flow being tested. Each bullet = one concise line describing what the user CAN DO or what the system DOES.\n';
+    prompt += '3. **Coverage Note** (1–2 sentences): Briefly note which test types appear well-covered (e.g. positive, negative, security) and call out any obvious gap (e.g. no performance tests, no boundary tests). Be specific.\n';
+    prompt += '\nFormatting rules:\n';
+    prompt += '- Maximum 15 lines total.\n';
+    prompt += '- Do NOT list individual test case names, TC IDs, severity labels, or pass/fail statistics.\n';
+    prompt += '- Plain, jargon-free language readable by a non-technical stakeholder in under 2 minutes.\n';
 
     return prompt;
 }
@@ -920,7 +992,8 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
             setStatus('⏳ Generating summary…', 'info');
             var modelLabel  = 'Auto Analysis';
             var builtIn     = builtInSummarise(parsedRows, cols, stats);
-            var summaryHtml = buildBuiltInSummaryHtml(builtIn);
+            var quality     = analyzeTestQuality(parsedRows, cols);
+            var summaryHtml = buildBuiltInSummaryHtml(builtIn, quality);
 
             renderSumStats(stats, cols);
             renderSumSummary(summaryHtml, modelLabel);
@@ -994,9 +1067,21 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
     }
 
     /* ── Build HTML for built-in summary result ── */
-    function buildBuiltInSummaryHtml(builtIn) {
+    function buildBuiltInSummaryHtml(builtIn, quality) {
         var html = '';
+
+        /* Quality badge */
+        if (quality) {
+            var badgeStyle = 'display:inline-block;padding:3px 12px;border-radius:12px;'
+                + 'font-size:.78rem;font-weight:700;letter-spacing:.03em;margin-bottom:12px;'
+                + 'background:' + escSum(quality.qualityColor) + '18;'
+                + 'color:' + escSum(quality.qualityColor) + ';'
+                + 'border:1.5px solid ' + escSum(quality.qualityColor) + '55;';
+            html += '<div style="' + badgeStyle + '">📊 ' + escSum(quality.qualityLabel) + '</div>';
+        }
+
         html += '<p class="sum-narrative-intro">' + builtIn.intro + '</p>';
+
         if (builtIn.capabilities && builtIn.capabilities.length > 0) {
             html += '<ul class="sum-capability-list">';
             builtIn.capabilities.forEach(function (cap) {
@@ -1004,6 +1089,23 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
             });
             html += '</ul>';
         }
+
+        /* Coverage quality insights (collapsible) */
+        if (quality && quality.insights && quality.insights.length > 0) {
+            html += '<details class="sum-coverage-details" style="margin-top:16px;padding:12px 14px;'
+                + 'border:1px solid var(--border,#e0e0e0);border-radius:8px;background:var(--card-bg,#fafafa)">';
+            html += '<summary style="cursor:pointer;font-weight:600;font-size:.9rem;'
+                + 'color:var(--accent,#1a73e8);list-style:none;outline:none">'
+                + '📋 Coverage Quality Insights <span style="font-weight:400;font-size:.8rem;opacity:.7">(click to expand)</span>'
+                + '</summary>';
+            html += '<ul style="margin:10px 0 0 0;padding-left:20px;line-height:1.7">';
+            quality.insights.forEach(function (insight) {
+                html += '<li style="font-size:.88rem">' + escSum(insight) + '</li>';
+            });
+            html += '</ul>';
+            html += '</details>';
+        }
+
         return html;
     }
 

@@ -197,6 +197,7 @@
         html += '<div class="hist-stat-chip" style="border-top:3px solid #fb8c00"><div class="num" style="color:#fb8c00">' + esc(missing(entry.privacy))     + '</div><div class="lbl">Privacy gaps</div></div>';
         html += '<div class="hist-stat-chip" style="border-top:3px solid #8e24aa"><div class="num" style="color:#8e24aa">' + esc(missing(entry.security))    + '</div><div class="lbl">Security gaps</div></div>';
         html += '<div class="hist-stat-chip" style="border-top:3px solid #00897b"><div class="num" style="color:#00897b">' + esc(missing(entry.performance)) + '</div><div class="lbl">Performance gaps</div></div>';
+        if (entry.compatibility) html += '<div class="hist-stat-chip" style="border-top:3px solid #0277bd"><div class="num" style="color:#0277bd">' + esc(missing(entry.compatibility)) + '</div><div class="lbl">Compatibility gaps</div></div>';
         html += '</div>';
         html += '</div>';
 
@@ -211,12 +212,14 @@
 
         // Gap sections
         var gapSections = [
-            { label: '⚙️ Functional Test Gaps',   checks: entry.functional  },
-            { label: '🔒 Privacy Test Gaps',       checks: entry.privacy     },
-            { label: '🛡 Security Test Gaps',      checks: entry.security    },
-            { label: '⚡ Performance Test Gaps',   checks: entry.performance },
+            { label: '⚙️ Functional Test Gaps',     checks: entry.functional    },
+            { label: '🔒 Privacy Test Gaps',         checks: entry.privacy       },
+            { label: '🛡 Security Test Gaps',        checks: entry.security      },
+            { label: '⚡ Performance Test Gaps',     checks: entry.performance   },
+            { label: '🌐 Compatibility Test Gaps',   checks: entry.compatibility },
         ];
         gapSections.forEach(function (gs) {
+            if (!gs.checks) return; // skip compatibility section for old history entries
             html += '<div class="hist-gap-section">';
             html += '<h3 class="hist-gap-title">' + esc(gs.label) + '</h3>';
             var checks  = gs.checks || [];
@@ -310,7 +313,7 @@
                     metaHtml += '<span class="hist-meta-badge">' + esc(entry.useCases.length) + ' use case(s)</span>';
                 }
             } else {
-                var gapCount = ['functional','privacy','security','performance'].reduce(function (acc, k) {
+                var gapCount = ['functional','privacy','security','performance','compatibility'].reduce(function (acc, k) {
                     return acc + (entry[k] || []).filter(function (c) { return !c.covered && !c.notApplicable; }).length;
                 }, 0);
                 metaHtml = '<span class="hist-meta-badge">' + esc(entry.totalRows) + ' rows</span>'
