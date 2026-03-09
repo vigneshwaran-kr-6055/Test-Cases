@@ -282,6 +282,163 @@ const TEMPLATES = [
             }];
         },
     },
+
+    // 8. Equivalence partitioning — generated when input/field/form keywords present
+    {
+        id: 'equivalence-partitioning',
+        condition: text => /\b(field|form|input|textbox|text\s+box|enter|fill|type|format|data|value)\b/i.test(text),
+        generate(ucText, ucRef, feature, ctx) {
+            const { actor } = ctx || {};
+            const actorLabel = actor || 'user';
+            return [{
+                ucRef,
+                title: `Verify equivalence partitioning and input class validation for ${feature}`,
+                description: [
+                    `Verify that ${feature} correctly accepts all valid input equivalence classes and rejects all invalid input classes.`,
+                    'One representative value from each equivalence partition is tested to validate the class behaviour.',
+                    'Invalid partitions must each produce a specific, meaningful error message.',
+                ],
+                steps: [
+                    `Log in as a ${actorLabel} and navigate to the ${feature} screen.`,
+                    'Identify all valid equivalence classes (e.g. correct format, within range, correct data type).',
+                    'Enter a representative value from each VALID class and submit — verify the system accepts each one.',
+                    'Identify all invalid equivalence classes (e.g. wrong format, out of range, wrong type, empty, null, special characters).',
+                    'Enter a representative value from each INVALID class and submit — verify each is rejected with a specific error.',
+                    'Verify that error messages clearly describe the constraint violated (format, range, type, required).',
+                    'Verify the form or action does not proceed when any invalid input is present.',
+                ],
+                expectedResult: `All valid equivalence class inputs are accepted and processed correctly; all invalid class inputs are rejected with specific, descriptive validation messages; the system does not process or save data when invalid inputs are present.`,
+                severity: 'major',
+                type: 'functional',
+            }];
+        },
+    },
+
+    // 9. State transition — generated when workflow/status/approval keywords present
+    {
+        id: 'state-transition',
+        condition: text => /\b(approve|reject|submit|workflow|status|pending|active|inactive|enable|disable|draft|publish|cancel|confirm|transition|archive|close|reopen|escalate|assign|complete|in.?progress)\b/i.test(text),
+        generate(ucText, ucRef, feature, ctx) {
+            const { entity, actor } = ctx || {};
+            const subject = entity || 'item';
+            const actorLabel = actor || 'user';
+            return [{
+                ucRef,
+                title: `Verify state transitions and workflow integrity for ${feature}`,
+                description: [
+                    `Verify that ${feature} enforces the correct state machine — only permitted transitions are allowed, and each state change is correctly persisted and reflected.`,
+                    'Invalid or out-of-order transitions must be blocked with a clear error message.',
+                    'Role-based restrictions on state transitions must be enforced.',
+                ],
+                steps: [
+                    `Log in as a ${actorLabel} with the required role/permissions.`,
+                    `Create or locate a ${subject} in its initial/start state.`,
+                    'Verify only the permitted next-state actions or buttons are visible and enabled.',
+                    'Perform each valid state transition in the correct sequence and verify the status updates immediately.',
+                    `Attempt to perform an invalid or skipped transition (bypass an intermediate state) — verify it is blocked with a meaningful error.`,
+                    'Log in as a lower-privilege user and attempt a privileged state transition — verify access is denied.',
+                    'Verify the state change is recorded in the audit log or activity history where applicable.',
+                    'Verify stakeholder notifications are triggered for state-change events as expected.',
+                ],
+                expectedResult: `All valid state transitions complete successfully and update the ${subject} status; invalid transitions are blocked with appropriate errors; role-based restrictions are enforced; state changes are persisted, visible in the UI, and logged in the audit trail.`,
+                severity: 'major',
+                type: 'functional',
+            }];
+        },
+    },
+
+    // 10. Data persistence / integrity — generated when save/create/update keywords present
+    {
+        id: 'data-persistence',
+        condition: text => /\b(save|create|add|update|edit|modify|submit|store|persist|record)\b/i.test(text),
+        generate(ucText, ucRef, feature, ctx) {
+            const { entity, actor } = ctx || {};
+            const subject = entity || feature || 'data';
+            const actorLabel = actor || 'user';
+            return [{
+                ucRef,
+                title: `Verify data integrity and persistence for ${feature}`,
+                description: [
+                    `Verify that ${feature} stores data accurately and that the stored data is retrievable, consistent, and not corrupted across sessions.`,
+                    'Saved data must survive page refreshes and user re-logins.',
+                    'All field values must be stored without truncation, encoding errors, or type mismatches.',
+                ],
+                steps: [
+                    `Log in as a ${actorLabel} and navigate to the ${feature} screen.`,
+                    `Create or update a ${subject} record with specific, uniquely identifiable test values for every field.`,
+                    'Save / submit the record and note the confirmation response.',
+                    'Refresh the browser page and verify the saved values are still present and unchanged.',
+                    'Log out and log back in; re-open the same record and verify all field values persist correctly.',
+                    'Verify that long-text, special characters, and numeric fields are stored without truncation or encoding issues.',
+                    'If the feature supports concurrent editing, verify that simultaneous saves do not cause data loss or overwrite conflicts without warning.',
+                ],
+                expectedResult: `All field values are saved accurately, persist across page refreshes and user sessions, are free from truncation or encoding corruption, and concurrent edits are handled gracefully without silent data loss.`,
+                severity: 'critical',
+                type: 'functional',
+            }];
+        },
+    },
+
+    // 11. Cross-browser / platform compatibility — generated when UI keywords present
+    {
+        id: 'cross-platform',
+        condition: text => { const lower = text.toLowerCase(); return UI_RULE_KEYWORDS.some(kw => lower.includes(kw)); },
+        generate(ucText, ucRef, feature) {
+            return [{
+                ucRef,
+                title: `Verify cross-browser and cross-device compatibility for ${feature}`,
+                description: [
+                    `Verify that ${feature} functions correctly and renders consistently across major browsers and device form factors.`,
+                    'No browser-specific layout breaks, functional regressions, or console errors should occur.',
+                    'Touch and pointer interactions must work on mobile and tablet devices.',
+                ],
+                steps: [
+                    `Open ${feature} in Google Chrome (latest) — verify full functionality, layout, and no console errors.`,
+                    'Repeat in Mozilla Firefox (latest) — verify consistent behaviour and appearance.',
+                    'Repeat in Apple Safari (latest) — verify consistent behaviour and appearance.',
+                    'Repeat in Microsoft Edge (latest) — verify consistent behaviour and appearance.',
+                    'Test on a mobile device (iOS Safari) — verify responsive layout and touch interactions.',
+                    'Test on an Android device (Chrome Mobile) — verify responsive layout and touch interactions.',
+                    'Verify form submissions, file uploads, and dynamic UI interactions work correctly in every tested environment.',
+                ],
+                expectedResult: `${feature} functions identically and renders consistently across Chrome, Firefox, Safari, and Edge on desktop, and on iOS and Android mobile browsers; no layout breaks, missing functionality, or unhandled console errors are present in any environment.`,
+                severity: 'major',
+                type: 'non-functional',
+            }];
+        },
+    },
+
+    // 12. Integration — generated when API/service/integration keywords present
+    {
+        id: 'integration-check',
+        condition: text => /\b(api|integration|webhook|third.?party|external|service|microservice|backend|rest|graphql|endpoint|connect|sync|exchange|notification|email)\b/i.test(text),
+        generate(ucText, ucRef, feature, ctx) {
+            const { entity, actor } = ctx || {};
+            const subject = entity || feature || 'feature';
+            const actorLabel = actor || 'user';
+            return [{
+                ucRef,
+                title: `Verify integration and end-to-end data flow for ${feature}`,
+                description: [
+                    `Verify that ${feature} integrates correctly with all dependent services, APIs, and external systems, and that data flows accurately across component boundaries.`,
+                    'Integration failures must be handled gracefully with clear, user-facing messages.',
+                    'Retry logic and fallback behaviour must work correctly during service unavailability.',
+                ],
+                steps: [
+                    'Set up the integration test environment with all dependent services active.',
+                    `Log in as a ${actorLabel} and execute the ${feature} workflow that triggers an integration call.`,
+                    'Verify the outgoing request to the external service/API contains the correct payload, headers, and authentication.',
+                    'Verify the response is processed correctly and the result is reflected accurately in the UI.',
+                    'Simulate an integration failure (service down, timeout, invalid response) and verify the system shows a user-friendly error and does not lose or corrupt data.',
+                    'Verify retry logic or exponential back-off is triggered for transient failures where applicable.',
+                    'Verify that integration events are logged and auditable.',
+                ],
+                expectedResult: `${feature} sends correctly formatted requests to external services, processes responses accurately, reflects results in the UI, handles integration failures gracefully with user-friendly messages, and logs integration events for auditability.`,
+                severity: 'critical',
+                type: 'functional',
+            }];
+        },
+    },
 ];
 
 /* ─────────────────────────────────────────────

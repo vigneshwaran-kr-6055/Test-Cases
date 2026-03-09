@@ -23,7 +23,7 @@
         <h2>Upload your test case spreadsheet</h2>
         <p>Supports <strong>.xlsx</strong> and <strong>.csv</strong> files.
            The tool reads your test cases, understands the feature flow, and highlights missing
-           <em>functional</em>, <em>privacy</em>, <em>security</em>, and <em>performance</em> test cases.</p>
+           <em>functional</em>, <em>privacy</em>, <em>security</em>, <em>performance</em>, and <em>compatibility</em> test cases.</p>
 
         <div class="drop-zone" id="drop-zone">
             <input type="file" id="file-input" accept=".xlsx,.csv" aria-label="Upload test case file">
@@ -72,6 +72,10 @@
                 <div class="num" id="stat-perf-miss" style="color:#00897b;">0</div>
                 <div class="lbl">Performance gaps ↓</div>
             </div>
+            <div class="stat-chip stat-chip--link" style="border-top: 3px solid #0277bd;" data-target="sec-compatibility" role="button" tabindex="0" aria-label="Jump to Compatibility Test Gaps section">
+                <div class="num" id="stat-comp-miss" style="color:#0277bd;">0</div>
+                <div class="lbl">Compatibility gaps ↓</div>
+            </div>
         </div>
     </div>
 
@@ -102,6 +106,12 @@
     <!-- Performance Gaps -->
     <div class="section-card" id="sec-performance">
         <h2>⚡ Performance Test Gaps</h2>
+        <div class="gap-body"></div>
+    </div>
+
+    <!-- Compatibility Gaps -->
+    <div class="section-card" id="sec-compatibility">
+        <h2>🌐 Compatibility Test Gaps</h2>
         <div class="gap-body"></div>
     </div>
 

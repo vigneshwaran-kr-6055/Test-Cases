@@ -104,6 +104,49 @@ const FUNCTIONAL_CHECKS = [
         'Verify focus order follows a logical reading sequence.',
         'Verify screen-reader announcements are made for dynamic content updates.',
       ]},
+    { id: 'smoke-sanity',    label: 'Smoke / sanity tests',              severity: 'showstopper',
+      keywords: ['smoke', 'sanity', 'basic', 'health check', 'critical path', 'startup', 'launch', 'core flow', 'primary flow'],
+      applicableContexts: [],
+      scenarios: [
+        'Verify the application launches and the primary screen loads without errors.',
+        'Verify the most critical end-to-end user journey (e.g. login → perform main action → confirm) completes successfully.',
+        'Verify core navigation links and menu items are accessible and route correctly.',
+        'Verify the primary data-entry form opens, accepts valid input, and saves without error.',
+        'Verify API health/status endpoints return expected 200 responses.',
+      ]},
+    { id: 'state-transition', label: 'State transition / workflow tests', severity: 'major',
+      keywords: ['approve', 'reject', 'status', 'pending', 'workflow', 'transition', 'draft', 'publish', 'active', 'inactive', 'cancel', 'confirm', 'close', 'reopen', 'escalate', 'assign', 'complete', 'in progress', 'in-progress'],
+      applicableContexts: ['has_state_changes'],
+      scenarios: [
+        'Verify all permitted state transitions complete correctly and update the record status immediately.',
+        'Verify invalid or skipped state transitions are blocked with a meaningful, specific error message.',
+        'Verify only users with the required role can trigger each state transition.',
+        'Verify state changes are recorded in the audit log / activity history.',
+        'Verify notifications or alerts are triggered for state-change events where expected.',
+        'Verify the UI only exposes actions that are valid for the current state (no phantom buttons).',
+      ]},
+    { id: 'data-integrity',  label: 'Data integrity / persistence tests', severity: 'critical',
+      keywords: ['data integrity', 'persist', 'consistent', 'accurate', 'correct data', 'saved', 'stored', 'retrieve', 'reload', 'data loss', 'corrupt'],
+      applicableContexts: ['has_state_changes'],
+      scenarios: [
+        'Verify saved data persists correctly after a page refresh.',
+        'Verify saved data is retrievable and unchanged after logout and login.',
+        'Verify all field values are stored without truncation, encoding errors, or data-type mismatches.',
+        'Verify concurrent writes to the same record do not cause data loss or silent overwrites.',
+        'Verify data relationships (references, foreign keys) remain intact after CRUD operations.',
+        'Verify that long text, special characters, and Unicode values are stored and displayed correctly.',
+      ]},
+    { id: 'equivalence-partition', label: 'Equivalence partitioning / input class tests', severity: 'major',
+      keywords: ['valid input', 'invalid input', 'input format', 'data type', 'input class', 'partition', 'alphanumeric', 'special character', 'wrong type', 'wrong format'],
+      applicableContexts: ['has_forms', 'has_api'],
+      scenarios: [
+        'Verify a representative value from each VALID input equivalence class is accepted and processed.',
+        'Verify a representative value from each INVALID input class is rejected with a specific error message.',
+        'Verify inputs of the wrong data type (e.g. text in a numeric field) are rejected with clear guidance.',
+        'Verify inputs in an incorrect format (e.g. invalid email format, wrong date format) are rejected.',
+        'Verify empty, whitespace-only, and null inputs are handled consistently across all fields.',
+        'Verify the system does not proceed or save data when any invalid equivalence class input is present.',
+      ]},
 ];
 
 // Privacy patterns
@@ -319,6 +362,52 @@ const PERFORMANCE_CHECKS = [
         'Verify performance budgets are enforced in the CI/CD pipeline.',
         'Verify memory usage does not grow unboundedly over a prolonged session (memory leak check).',
         'Verify third-party scripts do not significantly impact page load performance.',
+      ]},
+];
+
+// Compatibility patterns – cross-browser, mobile, and localisation
+const COMPATIBILITY_CHECKS = [
+    { id: 'cross-browser',    label: 'Cross-browser compatibility tests',           severity: 'major',
+      keywords: ['chrome', 'firefox', 'safari', 'edge', 'browser', 'cross-browser', 'cross browser', 'ie11', 'internet explorer'],
+      applicableContexts: [],
+      scenarios: [
+        'Verify the application functions correctly and consistently in Chrome, Firefox, Safari, and Edge (latest versions).',
+        'Verify no browser-specific layout breaks, missing elements, or JavaScript console errors appear.',
+        'Verify forms, file uploads, and all dynamic UI interactions work in all major browsers.',
+        'Verify CSS styles, animations, and transitions render consistently across browsers.',
+        'Verify third-party scripts, fonts, and embedded content load correctly in all tested browsers.',
+      ]},
+    { id: 'mobile-responsive', label: 'Mobile / responsive design tests',           severity: 'major',
+      keywords: ['mobile', 'responsive', 'tablet', 'ipad', 'iphone', 'android', 'viewport', 'touch', 'swipe', 'pinch', 'landscape', 'portrait'],
+      applicableContexts: [],
+      scenarios: [
+        'Verify the layout adapts correctly to mobile screen widths (320 px – 767 px).',
+        'Verify the layout adapts correctly to tablet screen widths (768 px – 1024 px).',
+        'Verify touch interactions (tap, swipe, scroll) work correctly on iOS and Android devices.',
+        'Verify text is legible and tap targets are adequately large (≥ 44 × 44 px) on small screens.',
+        'Verify the application works correctly in both portrait and landscape orientations.',
+        'Verify no horizontal scrollbars appear on mobile viewport sizes.',
+      ]},
+    { id: 'localisation',     label: 'Localisation / internationalisation tests',   severity: 'minor',
+      keywords: ['locale', 'language', 'i18n', 'l10n', 'internationalisation', 'localisation', 'localization', 'internationalization', 'translation', 'multilingual', 'rtl', 'unicode', 'currency', 'date format', 'time zone'],
+      applicableContexts: [],
+      scenarios: [
+        'Verify the application supports switching between all configured languages and locales.',
+        'Verify dates, times, numbers, and currencies are formatted according to the active locale.',
+        'Verify RTL (right-to-left) text is rendered and aligned correctly for applicable languages.',
+        'Verify translated strings are not truncated or overflowing UI containers.',
+        'Verify Unicode and multi-byte characters are stored and displayed without corruption.',
+        'Verify time-zone-sensitive data is displayed in the user\'s local time zone.',
+      ]},
+    { id: 'os-platform',      label: 'Operating system / desktop platform tests',   severity: 'minor',
+      keywords: ['windows', 'macos', 'linux', 'operating system', 'os', 'platform', 'desktop app', 'electron', 'native'],
+      applicableContexts: [],
+      scenarios: [
+        'Verify the application installs and runs without errors on Windows (latest stable version).',
+        'Verify the application installs and runs without errors on macOS (latest stable version).',
+        'Verify file system operations (save, open, upload) behave correctly on each supported OS.',
+        'Verify keyboard shortcuts respect OS-specific modifier keys (Ctrl on Windows, Cmd on macOS).',
+        'Verify system notifications or integrations (clipboard, file picker) work on all supported platforms.',
       ]},
 ];
 
@@ -552,10 +641,11 @@ function analyzeTestCases(rows) {
     // Detect what kind of feature/flow this test suite covers
     const activeContexts = detectFeatureContexts(allTexts);
 
-    const functionalResults  = runChecks(FUNCTIONAL_CHECKS,  allTexts, activeContexts);
-    const privacyResults     = runChecks(PRIVACY_CHECKS,     allTexts, activeContexts);
-    const securityResults    = runChecks(SECURITY_CHECKS,    allTexts, activeContexts);
-    const performanceResults = runChecks(PERFORMANCE_CHECKS, allTexts, activeContexts);
+    const functionalResults     = runChecks(FUNCTIONAL_CHECKS,    allTexts, activeContexts);
+    const privacyResults        = runChecks(PRIVACY_CHECKS,       allTexts, activeContexts);
+    const securityResults       = runChecks(SECURITY_CHECKS,      allTexts, activeContexts);
+    const performanceResults    = runChecks(PERFORMANCE_CHECKS,   allTexts, activeContexts);
+    const compatibilityResults  = runChecks(COMPATIBILITY_CHECKS, allTexts, activeContexts);
 
     const features = extractFeatures(rows, featureCol);
     const featureSummary = generateFeatureSummary(allTexts, features);
@@ -567,10 +657,11 @@ function analyzeTestCases(rows) {
         featureCol,
         features,
         activeContexts,
-        functional:   functionalResults,
-        privacy:      privacyResults,
-        security:     securityResults,
-        performance:  performanceResults,
+        functional:    functionalResults,
+        privacy:       privacyResults,
+        security:      securityResults,
+        performance:   performanceResults,
+        compatibility: compatibilityResults,
         rows,
         featureSummary,
     };
@@ -593,6 +684,7 @@ function analyzeTestCases(rows) {
     const secPrivacy        = document.getElementById('sec-privacy');
     const secSecurity       = document.getElementById('sec-security');
     const secPerformance    = document.getElementById('sec-performance');
+    const secCompatibility  = document.getElementById('sec-compatibility');
     const secTable          = document.getElementById('sec-table');
 
     let parsedRows      = null;
@@ -616,6 +708,7 @@ function analyzeTestCases(rows) {
             privacy:        result.privacy,
             security:       result.security,
             performance:    result.performance,
+            compatibility:  result.compatibility,
             headers:        result.headers,
             rows:           result.rows.slice(0, 200),
         };
@@ -638,8 +731,8 @@ function analyzeTestCases(rows) {
     }
 
     function clearResults() {
-        [secSummary, secFeatureSummary, secFeatures, secFunctional, secPrivacy, secSecurity, secPerformance, secTable]
-            .forEach(s => s.classList.remove('visible'));
+        [secSummary, secFeatureSummary, secFeatures, secFunctional, secPrivacy, secSecurity, secPerformance, secCompatibility, secTable]
+            .forEach(s => s && s.classList.remove('visible'));
     }
 
     /* ── Drag-and-drop ── */
@@ -792,10 +885,11 @@ function analyzeTestCases(rows) {
         renderSummary(r);
         renderFeatureSummary(r);
         renderFeatures(r);
-        renderGapSection(secFunctional,  'Functional Test Gaps',   r.functional,  r.features);
-        renderGapSection(secPrivacy,     'Privacy Test Gaps',       r.privacy,     r.features);
-        renderGapSection(secSecurity,    'Security Test Gaps',      r.security,    r.features);
-        renderGapSection(secPerformance, 'Performance Test Gaps',   r.performance, r.features);
+        renderGapSection(secFunctional,    'Functional Test Gaps',      r.functional,    r.features);
+        renderGapSection(secPrivacy,       'Privacy Test Gaps',          r.privacy,       r.features);
+        renderGapSection(secSecurity,      'Security Test Gaps',         r.security,      r.features);
+        renderGapSection(secPerformance,   'Performance Test Gaps',      r.performance,   r.features);
+        if (secCompatibility) renderGapSection(secCompatibility, 'Compatibility Test Gaps', r.compatibility, r.features);
         renderTable(r);
     }
 
@@ -807,10 +901,11 @@ function analyzeTestCases(rows) {
 
     function renderSummary(r) {
         const missing = fn => fn.filter(x => !x.covered && !x.notApplicable).length;
-        const mFn   = missing(r.functional);
-        const mPr   = missing(r.privacy);
-        const mSec  = missing(r.security);
-        const mPerf = missing(r.performance);
+        const mFn     = missing(r.functional);
+        const mPr     = missing(r.privacy);
+        const mSec    = missing(r.security);
+        const mPerf   = missing(r.performance);
+        const mComp   = r.compatibility ? missing(r.compatibility) : 0;
 
         document.getElementById('stat-total').textContent     = r.totalRows;
         document.getElementById('stat-features').textContent  = r.features.length || '—';
@@ -818,6 +913,8 @@ function analyzeTestCases(rows) {
         document.getElementById('stat-pr-miss').textContent   = mPr;
         document.getElementById('stat-sec-miss').textContent  = mSec;
         document.getElementById('stat-perf-miss').textContent = mPerf;
+        const compEl = document.getElementById('stat-comp-miss');
+        if (compEl) compEl.textContent = mComp;
 
         secSummary.classList.add('visible');
     }
