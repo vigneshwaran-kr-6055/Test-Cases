@@ -1324,15 +1324,30 @@ async function extractPdfText(arrayBuffer) {
                 btnGenerate.disabled = true;
                 return;
             }
-            readXlsxFile(file).then(rawRows => {
-                parsedUseCases = parseXlsxToUseCases(rawRows);
-                if (!parsedUseCases.length) {
-                    setStatus('⚠ No use cases found in the spreadsheet.', 'error');
-                    btnGenerate.disabled = true;
-                    return;
+            readXlsxFile(file, { getSheets: true }).then(sheets => {
+                // Smart tab detection: prefer a sheet named UC / UC's / usecase / usecases
+                const ucPatterns = ['uc', 'ucs', 'usecase', 'usecases'];
+                let targetSheet = 1;
+                let sheetNote = '';
+                if (sheets && sheets.length > 1) {
+                    const match = sheets.find(s =>
+                        ucPatterns.includes(s.name.toLowerCase().replace(/['\u2018\u2019\s-]/g, ''))
+                    );
+                    if (match) {
+                        targetSheet = match.name;
+                        sheetNote = ` (tab: "${match.name}")`;
+                    }
                 }
-                setStatus(`✔ Found ${parsedUseCases.length} use case(s) in spreadsheet. Click Generate.`, 'success');
-                btnGenerate.disabled = false;
+                return readXlsxFile(file, { sheet: targetSheet }).then(rawRows => {
+                    parsedUseCases = parseXlsxToUseCases(rawRows);
+                    if (!parsedUseCases.length) {
+                        setStatus('⚠ No use cases found in the spreadsheet' + sheetNote + '.', 'error');
+                        btnGenerate.disabled = true;
+                        return;
+                    }
+                    setStatus(`✔ Found ${parsedUseCases.length} use case(s) in spreadsheet${sheetNote}. Click Generate.`, 'success');
+                    btnGenerate.disabled = false;
+                });
             }).catch(err => {
                 setStatus('⚠ Could not parse XLSX: ' + err.message, 'error');
                 btnGenerate.disabled = true;
