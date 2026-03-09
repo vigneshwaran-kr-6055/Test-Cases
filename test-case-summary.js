@@ -411,9 +411,63 @@ function themeCapability(key, scenarios) {
 }
 
 /**
+ * Generate a brief user-story narrative sentence describing a feature area
+ * from its use-case name and the test-scenario titles within it.
+ * Used as the human-readable description beneath each feature-area heading.
+ *
+ * @param {string}   ucName    - The use-case / feature-area name.
+ * @param {string[]} scenarios - Test-case titles that belong to this area.
+ * @returns {string} A 1–2 sentence plain-language description.
+ */
+function generateFeatureNarrative(ucName, scenarios) {
+    if (!scenarios || scenarios.length === 0) {
+        return 'Validates ' + ucName.toLowerCase() + ' functionality.';
+    }
+
+    var joined = scenarios.map(function (s) { return s.toLowerCase(); }).join(' ');
+
+    /* Detect broad coverage categories present in this area */
+    var hasNeg  = /\b(invalid|error|not |cannot|unable|should not|rejected|blocked|denied|negative|no)\b/.test(joined);
+    var hasPos  = /\b(success|valid|correct|able|should work|completes|can )\b/.test(joined);
+    var hasBnd  = /\b(limit|maximum|minimum|empty|boundary|multiple|all accounts|all folders)\b/.test(joined);
+    var hasAuth = /\b(login|log in|sign in|auth|session|password|credential|retention|device)\b/.test(joined);
+    var hasFile = /\b(file|upload|download|import|export|drag|drop|attach)\b/.test(joined);
+
+    /* Single scenario: convert directly to a "Validates that …" user-story sentence */
+    if (scenarios.length === 1) {
+        var sc = scenarios[0].trim().replace(/\.$/, '');
+        if (!sc) { return 'Validates ' + ucName.toLowerCase() + ' functionality.'; }
+        var lower = sc.charAt(0).toLowerCase() + sc.slice(1);
+        return 'Validates that ' + lower + '.';
+    }
+
+    /* Multiple scenarios: synthesise a feature-level description */
+    var aspects = [];
+    if (hasAuth) aspects.push('authentication and session management');
+    if (hasFile) aspects.push('file handling operations');
+
+    var description = capFirst(ucName);
+    if (aspects.length > 0) {
+        description += ' covers ' + aspects.join(' and ');
+    }
+    description += ' across ' + scenarios.length + ' scenario' + (scenarios.length !== 1 ? 's' : '') + '.';
+
+    /* Append a coverage-type note when multiple test types are present */
+    var coverageNote = '';
+    if (hasPos && hasNeg) { coverageNote = 'Covers both expected success paths and error/rejection scenarios.'; }
+    else if (hasNeg)      { coverageNote = 'Focuses on error handling and invalid input scenarios.'; }
+    else if (hasPos)      { coverageNote = 'Validates successful user workflows and expected system behaviour.'; }
+    if (hasBnd) { coverageNote += (coverageNote ? ' ' : '') + 'Includes boundary and limit condition tests.'; }
+
+    if (coverageNote) description += ' ' + coverageNote;
+
+    return description;
+}
+
+/**
  * Convert a list of named use-case / feature-area labels into capability objects.
- * Each object contains a display label (with test count) and the list of scenario
- * names that belong to the area so they can be rendered beneath the heading.
+ * Each object contains a clean display label, a brief user-story narrative
+ * description, and the list of scenario names that belong to the area.
  * Objects are sorted by test-case count (most-tested areas first) so the most
  * important areas appear at the top.  ALL areas are returned — no overflow
  * truncation — so the user always sees the full picture.
@@ -422,7 +476,7 @@ function themeCapability(key, scenarios) {
  * @param {Object}   ucCounts  - Map of { useCase: count }.
  * @param {Map}      [ucGroups] - Map returned by groupByUseCase (useCase → rows[]).
  * @param {Object}   [cols]    - Detected column map (for extracting scenario names).
- * @returns {{ label: string, scenarios: string[] }[]}
+ * @returns {{ label: string, description: string, scenarios: string[] }[]}
  */
 function useCasesToCapabilities(ucList, ucCounts, ucGroups, cols) {
     /* Sort: highest test-case count first, then alphabetical for ties */
@@ -431,10 +485,9 @@ function useCasesToCapabilities(ucList, ucCounts, ucGroups, cols) {
         return diff !== 0 ? diff : a.localeCompare(b);
     });
 
-    /* Return every area with its test-case count and individual scenario names */
+    /* Return every area with a clean label, a narrative description, and scenario names */
     return sorted.map(function (uc) {
-        var count = ucCounts[uc] || 0;
-        var label = capFirst(uc) + ' (' + count + ' test' + (count !== 1 ? 's' : '') + ').';
+        var label = capFirst(uc);
 
         var scenarios = [];
         if (ucGroups && cols) {
@@ -446,7 +499,9 @@ function useCasesToCapabilities(ucList, ucCounts, ucGroups, cols) {
             });
         }
 
-        return { label: label, scenarios: scenarios };
+        var description = generateFeatureNarrative(uc, scenarios);
+
+        return { label: label, description: description, scenarios: scenarios };
     });
 }
 
@@ -624,7 +679,7 @@ function builtInSummarise(rows, cols, stats) {
      * Priority order:
      *  1. 1 named use-case area  → name it explicitly (most reliable for single-area files).
      *  2. 2 named use-case areas → name both (more reliable than a keyword guess).
-     *  3. ≥3 named areas present (Strategy 1) → state exact count so user knows scope.
+     *  3. ≥3 named areas present (Strategy 1) → narrative sentence listing top areas.
      *  4. Detected subject keyword (no use-case column or < 3 named areas).
      *  5. Count of named areas with a full list.
      *  6. Generic scenario count fallback. */
@@ -640,9 +695,18 @@ function builtInSummarise(rows, cols, stats) {
                 '<strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>' +
                 (capabilities.length > 0 ? ' — key capabilities below.' : '.');
     } else if (ucList.length >= 3) {
-        intro = 'Covers <strong>' + ucList.length + ' feature area' + (ucList.length !== 1 ? 's' : '') + '</strong>' +
-                ' across <strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>' +
-                ' — all areas listed below, sorted by test coverage.';
+        /* Show a narrative intro listing the top 3 highest-coverage areas by name */
+        var topAreaLabels = capabilities.slice(0, 3).map(function (c) {
+            return '<strong>' + escSum(typeof c === 'object' ? c.label : c) + '</strong>';
+        });
+        var areaPhrase = topAreaLabels.join(', ');
+        if (ucList.length > 3) {
+            var remainingCount = ucList.length - 3;
+            areaPhrase += ', and <strong>' + remainingCount + ' more area' + (remainingCount !== 1 ? 's' : '') + '</strong>';
+        }
+        intro = 'The test suite spans <strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>' +
+                ' across <strong>' + ucList.length + ' feature area' + (ucList.length !== 1 ? 's' : '') + '</strong>' +
+                ' — covering ' + areaPhrase + '.';
     } else if (subject) {
         intro = '<strong>' + escSum(subject) + '</strong> feature validated across ' +
                 '<strong>' + rows.length + ' scenario' + (rows.length !== 1 ? 's' : '') + '</strong>' +
@@ -1097,14 +1161,22 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
             var primaryCaps  = caps.slice(0, SUM_MAX_CAPABILITIES);
             var overflowCaps = caps.slice(SUM_MAX_CAPABILITIES);
 
-            /* Render a single capability item as a feature block with scenario list */
+            /* Render a single capability item as a feature block with narrative description + scenario list */
             function renderCapBlock(cap) {
                 /* Support both legacy string format and new object format */
-                var label     = (typeof cap === 'object') ? cap.label     : cap;
-                var scenarios = (typeof cap === 'object') ? cap.scenarios : [];
+                var label       = (typeof cap === 'object') ? cap.label       : cap;
+                var description = (typeof cap === 'object') ? (cap.description || '') : '';
+                var scenarios   = (typeof cap === 'object') ? (cap.scenarios   || []) : [];
 
                 var block = '<div class="sum-feature-block">';
                 block += '<div class="sum-feature-name"><strong>' + escSum(label) + '</strong></div>';
+
+                /* Narrative description — shown below the heading in muted text */
+                if (description) {
+                    block += '<p class="sum-feature-description" style="margin:4px 0 6px;font-size:.88rem;'
+                           + 'color:var(--text-muted,#555);line-height:1.55">'
+                           + escSum(description) + '</p>';
+                }
 
                 if (scenarios && scenarios.length > 0) {
                     block += '<ul class="sum-scenario-list">';
