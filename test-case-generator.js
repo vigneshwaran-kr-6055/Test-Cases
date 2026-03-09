@@ -317,7 +317,7 @@ const TEMPLATES = [
     // 9. State transition — generated when workflow/status/approval keywords present
     {
         id: 'state-transition',
-        condition: text => /\b(approve|reject|submit|workflow|status|pending|active|inactive|enable|disable|draft|publish|cancel|confirm|transition|archive|close|reopen|escalate|assign|complete|in.?progress)\b/i.test(text),
+        condition: text => /\b(approve|reject|submit|workflow|status|pending|active|inactive|enable|disable|draft|publish|cancel|confirm|transition|archive|close|reopen|escalate|assign|complete|in[- ]?progress)\b/i.test(text),
         generate(ucText, ucRef, feature, ctx) {
             const { entity, actor } = ctx || {};
             const subject = entity || 'item';

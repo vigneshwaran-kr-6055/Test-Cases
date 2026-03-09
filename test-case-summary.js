@@ -471,14 +471,14 @@ function analyzeTestQuality(rows, cols) {
     }).join(' ').toLowerCase();
 
     /* Detect which test-type dimensions are present */
-    var hasPositive    = /\b(valid|success|successful|positive|happy.?path|correct|should work|verify that|able to|complete|completed)\b/.test(allText);
+    var hasPositive    = /\b(valid|success|successful|positive|happy[- ]?path|correct|should work|verify that|able to|complete|completed)\b/.test(allText);
     var hasNegative    = /\b(invalid|negative|incorrect|wrong|bad input|fail|reject|error message|not allowed|cannot|unable|blocked|denied)\b/.test(allText);
-    var hasBoundary    = /\b(boundary|limit|min\b|max\b|maximum|minimum|overflow|empty|zero|null|length|edge case|out.of.range)\b/.test(allText);
-    var hasSecurity    = /\b(sql injection|xss|csrf|unauthorized|authentication|authorization|brute.force|encrypt|token|session|privilege|injection)\b/.test(allText);
-    var hasPerformance = /\b(performance|load test|stress test|latency|response time|concurrent|timeout|throughput|sla)\b/.test(allText);
+    var hasBoundary    = /\b(boundary|limit|min\b|max\b|maximum|minimum|overflow|empty|zero|null|length|edge[- ]?case|out[\s-]of[\s-]range)\b/.test(allText);
+    var hasSecurity    = /\b(sql injection|xss|csrf|unauthorized|authentication|authorization|brute[- ]?force|encrypt|token|session|privilege|injection)\b/.test(allText);
+    var hasPerformance = /\b(performance|load[\s-]?test|stress[\s-]?test|latency|response[\s-]?time|concurrent|timeout|throughput|sla)\b/.test(allText);
     var hasUi          = /\b(display|visible|layout|responsive|button|navigation|screen|interface|render|style|color|font)\b/.test(allText);
-    var hasAccessibility = /\b(accessibility|keyboard.navigation|screen reader|aria|wcag|a11y|tab order|focus|contrast)\b/.test(allText);
-    var hasDataIntegrity = /\b(persist|data integrity|consistent|accurate|data loss|corrupt|reload|refresh|survives)\b/.test(allText);
+    var hasAccessibility = /\b(accessibility|keyboard[\s-]?navigation|screen[\s-]?reader|aria|wcag|a11y|tab[\s-]?order|focus|contrast)\b/.test(allText);
+    var hasDataIntegrity = /\b(persist|data[\s-]?integrity|consistent|accurate|data[\s-]?loss|corrupt|reload|refresh|survives)\b/.test(allText);
     var hasStateTrans  = /\b(status|workflow|state|transition|approve|reject|pending|active|inactive|draft|publish)\b/.test(allText);
 
     /* Score (0–9) — one point per dimension present */
@@ -503,7 +503,7 @@ function analyzeTestQuality(rows, cols) {
     if (hasBoundary)      insights.push('✅ Boundary / edge-case tests detected');
     else                  insights.push('⚠ No boundary value tests found — consider min/max/empty/null input coverage');
     if (hasSecurity)      insights.push('✅ Security-related tests detected');
-    else                  insights.push('⚠ No security tests found — consider authentication, authorisation, and injection tests');
+    else                  insights.push('⚠ No security tests found — consider authentication, authorization, and injection tests');
     if (hasPerformance)   insights.push('✅ Performance / load tests detected');
     else                  insights.push('⚠ No performance tests found — consider response time, load, and timeout scenarios');
     if (hasUi)            insights.push('✅ UI / visual validation tests detected');

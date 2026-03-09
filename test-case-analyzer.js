@@ -105,7 +105,7 @@ const FUNCTIONAL_CHECKS = [
         'Verify screen-reader announcements are made for dynamic content updates.',
       ]},
     { id: 'smoke-sanity',    label: 'Smoke / sanity tests',              severity: 'showstopper',
-      keywords: ['smoke', 'sanity', 'basic', 'health check', 'critical path', 'startup', 'launch', 'core flow', 'primary flow'],
+      keywords: ['smoke test', 'smoke-test', 'sanity test', 'sanity-test', 'basic test', 'health check', 'health-check', 'critical path', 'critical-path', 'core flow', 'primary flow', 'startup', 'launch'],
       applicableContexts: [],
       scenarios: [
         'Verify the application launches and the primary screen loads without errors.',
