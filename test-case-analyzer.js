@@ -853,16 +853,31 @@ function analyzeTestCases(rows) {
             reader.readAsText(file);
         } else {
             // .xlsx via read-excel-file
-            readXlsxFile(file).then(rawRows => {
-                const rows = rowsToObjects(rawRows);
-                if (!rows.length) {
-                    setStatus('⚠ The first sheet appears to be empty or has only a header row.', 'error');
-                    btnAnalyze.disabled = true;
-                    return;
+            readXlsxFile(file, { getSheets: true }).then(sheets => {
+                // Smart tab detection: prefer a sheet named TC / TC's / testcase / testcases
+                const tcPatterns = ['tc', 'tcs', 'testcase', 'testcases'];
+                let targetSheet = 1;
+                let sheetNote = '';
+                if (sheets && sheets.length > 1) {
+                    const match = sheets.find(s =>
+                        tcPatterns.includes(s.name.toLowerCase().replace(/['\u2018\u2019\s-]/g, ''))
+                    );
+                    if (match) {
+                        targetSheet = match.name;
+                        sheetNote = ` (tab: "${match.name}")`;
+                    }
                 }
-                parsedRows = rows;
-                setStatus(`✔ Parsed ${rows.length} rows. Click Analyse.`, 'success');
-                btnAnalyze.disabled = false;
+                return readXlsxFile(file, { sheet: targetSheet }).then(rawRows => {
+                    const rows = rowsToObjects(rawRows);
+                    if (!rows.length) {
+                        setStatus('⚠ The selected sheet' + sheetNote + ' appears to be empty or has only a header row.', 'error');
+                        btnAnalyze.disabled = true;
+                        return;
+                    }
+                    parsedRows = rows;
+                    setStatus(`✔ Parsed ${rows.length} rows${sheetNote}. Click Analyse.`, 'success');
+                    btnAnalyze.disabled = false;
+                });
             }).catch(err => {
                 setStatus('⚠ Could not parse file: ' + err.message, 'error');
                 btnAnalyze.disabled = true;

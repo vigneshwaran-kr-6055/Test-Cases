@@ -1027,16 +1027,31 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
                 return;
             }
             try {
-                readXlsxFile(file).then(function (rawRows) {
-                    var rows = sumRowsToObjects(rawRows);
-                    if (!rows.length) {
-                        setStatus('⚠ The spreadsheet appears to be empty or has only a header row.', 'error');
-                        btnSummarise.disabled = true;
-                        return;
+                readXlsxFile(file, { getSheets: true }).then(function (sheets) {
+                    // Smart tab detection: prefer a sheet named TC / TC's / testcase / testcases
+                    var tcPatterns = ['tc', 'tcs', 'testcase', 'testcases'];
+                    var targetSheet = 1;
+                    var sheetNote = '';
+                    if (sheets && sheets.length > 1) {
+                        var match = sheets.find(function (s) {
+                            return tcPatterns.includes(s.name.toLowerCase().replace(/['\u2018\u2019\s-]/g, ''));
+                        });
+                        if (match) {
+                            targetSheet = match.name;
+                            sheetNote = ' (tab: "' + match.name + '")';
+                        }
                     }
-                    parsedRows = rows;
-                    btnSummarise.disabled = false;
-                    doSummarise();
+                    return readXlsxFile(file, { sheet: targetSheet }).then(function (rawRows) {
+                        var rows = sumRowsToObjects(rawRows);
+                        if (!rows.length) {
+                            setStatus('⚠ The selected sheet' + sheetNote + ' appears to be empty or has only a header row.', 'error');
+                            btnSummarise.disabled = true;
+                            return;
+                        }
+                        parsedRows = rows;
+                        btnSummarise.disabled = false;
+                        doSummarise();
+                    });
                 }).catch(function (err) {
                     setStatus('⚠ Could not parse file: ' + (err && err.message ? err.message : String(err)), 'error');
                     btnSummarise.disabled = true;
