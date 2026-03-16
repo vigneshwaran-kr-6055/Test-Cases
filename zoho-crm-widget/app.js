@@ -377,8 +377,9 @@ function renderSuggestions(stageName) {
     return;
   }
   var html = '';
+  // s.body is static trusted markup defined in BLUEPRINT above (never user-supplied).
   def.suggestions.forEach(function (s) {
-    html += '<div class="zia-suggestion-card"><strong>' + escHtml(s.title) + '</strong>' + escHtml(s.body) + '</div>';
+    html += '<div class="zia-suggestion-card"><strong>' + escHtml(s.title) + '</strong>' + s.body + '</div>';
   });
   container.innerHTML = html;
 }
@@ -415,12 +416,24 @@ function matchIntent(text) {
 /* ─────────────────────────────────────────────────────────────
    Zoho Zia API call (via CRM serverless function)
    Falls back to intent matching if the API is unavailable.
+
+   IMPORTANT: Replace the URL below with the correct Zia Assistant
+   endpoint for your Zoho datacenter:
+     • US  → https://zia.zoho.com/api/v1/assist
+     • EU  → https://zia.zoho.eu/api/v1/assist
+     • AU  → https://zia.zoho.com.au/api/v1/assist
+     • IN  → https://zia.zoho.in/api/v1/assist
+   Refer to Zoho Zia API documentation for the correct path and
+   request/response schema for your agent configuration.
 ───────────────────────────────────────────────────────────── */
 function callZiaAgent(userText, callback) {
   var contextSummary = buildContextSummary();
 
+  // Placeholder URL — update to match your Zoho datacenter and Zia agent endpoint.
+  var ZIA_API_URL = 'https://zia.zoho.com/api/v1/assist';
+
   ZOHO.CRM.CONNECTION.invoke('zia_connection', {
-    url: 'https://zia.zoho.com/workboard/assist',
+    url: ZIA_API_URL,
     method: 'POST',
     param_type: 1,
     parameters: JSON.stringify({

@@ -235,6 +235,7 @@ function zwaRenderDemo(stageName) {
   var suggestEl = zwaEl('zwa-demo-suggestions');
   if (suggestEl) {
     var sHtml = '';
+    // s.body is static trusted markup defined in ZWA_BLUEPRINT above (never user-supplied).
     def.suggestions.forEach(function (s) {
       sHtml += '<div class="zwa-suggestion-item">' +
         '<strong>' + zwaEscHtml(s.title) + '</strong>' +
@@ -378,7 +379,11 @@ function zwaCopyText(text, btnEl) {
       var orig = btnEl.textContent;
       btnEl.textContent = '✓ Copied!';
       setTimeout(function () { btnEl.textContent = orig; }, 2000);
-    }).catch(function () {});
+    }).catch(function () {
+      var orig = btnEl.textContent;
+      btnEl.textContent = '✗ Copy failed';
+      setTimeout(function () { btnEl.textContent = orig; }, 2000);
+    });
   }
 }
 

@@ -112,6 +112,15 @@ function injectAIButton(recordContext) {
 
   /* ── Click handler: open widget as a CRM side panel ── */
   btn.addEventListener('click', function () {
+    if (WIDGET_ID === 'YOUR_WIDGET_ID_HERE') {
+      alert(
+        'Workboard AI Assistant: Widget ID is not configured.\n\n' +
+        'Please update the WIDGET_ID constant in client-script.js with the ' +
+        'ID shown in Zoho CRM → Setup → Developer Space → Widgets after ' +
+        'uploading the zoho-crm-widget/ package.'
+      );
+      return;
+    }
     ZDK.UI.Panel.open({
       widgetID: WIDGET_ID,
       title:    PANEL_TITLE,
