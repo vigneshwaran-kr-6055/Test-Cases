@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Test Case Assist</title>
     <link rel="stylesheet" href="main.css">
+    <link rel="stylesheet" href="zoho-workboard-ai.css">
     <script>
         (function () {
             var t = localStorage.getItem('theme') || 'light';
@@ -33,6 +34,7 @@
     <button class="tab-btn active" id="tab-reviewer"  role="tab" aria-selected="true"  aria-controls="section-review">🔍 Test Case Reviewer</button>
     <button class="tab-btn"        id="tab-generator" role="tab" aria-selected="false" aria-controls="section-generator">⚡ Test Case Generator</button>
     <button class="tab-btn"        id="tab-summary"   role="tab" aria-selected="false" aria-controls="section-summary">📋 Test Case Summary</button>
+    <button class="tab-btn"        id="tab-zoho-ai"   role="tab" aria-selected="false" aria-controls="section-zoho-ai">🤖 Zoho Workboard AI</button>
     <button class="tab-btn"        id="tab-history"   role="tab" aria-selected="false" aria-controls="section-history">🕑 History</button>
 </nav>
 
@@ -201,7 +203,190 @@
     </div><!-- /.sum-wrap -->
 </div><!-- /#section-summary -->
 
-<!-- ── Section 4: History ── -->
+<!-- ── Section 4: Zoho Workboard AI ── -->
+<div id="section-zoho-ai" role="tabpanel" aria-labelledby="tab-zoho-ai" hidden>
+  <div class="zwa-wrap">
+
+    <!-- Intro card -->
+    <div class="zwa-intro-card">
+      <div class="zwa-intro-icon-block">
+        <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <circle cx="20" cy="20" r="18" fill="#fff" opacity=".18"/>
+          <circle cx="15" cy="19" r="3" fill="#fff"/>
+          <circle cx="25" cy="19" r="3" fill="#fff"/>
+          <rect x="14" y="25" width="12" height="2.5" rx="1.25" fill="#fff" opacity=".8"/>
+          <rect x="17" y="9" width="6" height="4" rx="2" fill="#fff" opacity=".7"/>
+          <circle cx="20" cy="10" r="1.6" fill="#fff"/>
+          <path d="M5 9l1.2 2.4 2.4 1.2-2.4 1.2L5 16l-1.2-2.4L1.4 12.4l2.4-1.2z" fill="#ffd54f"/>
+          <path d="M33 5l.9 1.8 1.8.9-1.8.9L33 10.4l-.9-1.8-1.8-.9 1.8-.9z" fill="#ffd54f"/>
+        </svg>
+      </div>
+      <div class="zwa-intro-content">
+        <h2>Zoho Workboard AI Assistant</h2>
+        <p>This tab provides an interactive preview and deployment guide for integrating <strong>Zoho Zia AI</strong> with your <strong>Zoho CRM Workboard</strong> module. The AI assistant appears as a floating icon on every Workboard record detail page and guides users through each blueprint stage with contextual prompts, required-field checklists, and intelligent suggestions.</p>
+        <div class="zwa-intro-tags">
+          <span class="zwa-intro-tag">Zoho CRM</span>
+          <span class="zwa-intro-tag">Zoho Zia</span>
+          <span class="zwa-intro-tag">Workboard Module</span>
+          <span class="zwa-intro-tag">Blueprint Integration</span>
+          <span class="zwa-intro-tag">Custom Widget</span>
+          <span class="zwa-intro-tag">Client Script</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Inner tab bar -->
+    <div class="zwa-tabs" role="tablist">
+      <button class="zwa-tab-btn active" id="zwa-tab-demo"   role="tab" aria-selected="true"  aria-controls="zwa-pane-demo">🖥️ Live Preview</button>
+      <button class="zwa-tab-btn"        id="zwa-tab-setup"  role="tab" aria-selected="false" aria-controls="zwa-pane-setup">⚙️ Setup Guide</button>
+      <button class="zwa-tab-btn"        id="zwa-tab-config" role="tab" aria-selected="false" aria-controls="zwa-pane-config">📄 Widget Config</button>
+    </div>
+
+    <!-- ── Pane 1: Live Preview ── -->
+    <div class="zwa-tab-pane" id="zwa-pane-demo" role="tabpanel" aria-labelledby="zwa-tab-demo">
+      <div class="zwa-stage-selector-row">
+        <label for="zwa-stage-select">Simulate stage:</label>
+        <select class="zwa-stage-select" id="zwa-stage-select" aria-label="Select blueprint stage to preview"></select>
+      </div>
+
+      <div class="zwa-demo-layout">
+        <!-- Blueprint flow sidebar -->
+        <div class="zwa-flow-sidebar">
+          <h3>Blueprint Flow</h3>
+          <div id="zwa-flow-container"></div>
+        </div>
+
+        <!-- Demo widget panel -->
+        <div class="zwa-demo-main">
+
+          <!-- Widget preview -->
+          <div class="zwa-widget-preview">
+            <div class="zwa-widget-header">
+              <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                <circle cx="12" cy="12" r="11" fill="#fff" opacity=".2"/>
+                <circle cx="9" cy="11" r="1.6" fill="#fff"/>
+                <circle cx="15" cy="11" r="1.6" fill="#fff"/>
+                <rect x="8.5" y="14" width="7" height="1.5" rx=".75" fill="#fff" opacity=".8"/>
+                <rect x="10.5" y="5" width="3" height="2" rx="1" fill="#fff" opacity=".7"/>
+              </svg>
+              <span class="zwa-widget-header-title">Zia AI Assistant</span>
+            </div>
+
+            <div class="zwa-widget-stage-bar">
+              <span>Current Stage</span>
+              <span class="zwa-demo-stage-badge" id="zwa-demo-stage-badge"></span>
+            </div>
+
+            <div class="zwa-widget-body">
+              <!-- Guidance section -->
+              <div>
+                <div class="zwa-widget-section-title">💡 Stage Guidance</div>
+                <div class="zwa-guidance-box" id="zwa-demo-guidance"></div>
+              </div>
+
+              <!-- Required fields section -->
+              <div>
+                <div class="zwa-widget-section-title">📋 Required Fields</div>
+                <div id="zwa-demo-fields"></div>
+              </div>
+
+              <!-- Suggestions section -->
+              <div>
+                <div class="zwa-widget-section-title">✨ Zia Suggestions</div>
+                <div id="zwa-demo-suggestions"></div>
+              </div>
+
+              <!-- Next transitions section -->
+              <div>
+                <div class="zwa-widget-section-title">➡️ Available Transitions</div>
+                <div class="zwa-transitions-row" id="zwa-demo-transitions"></div>
+              </div>
+            </div>
+          </div><!-- /.zwa-widget-preview -->
+
+        </div><!-- /.zwa-demo-main -->
+      </div><!-- /.zwa-demo-layout -->
+    </div><!-- /#zwa-pane-demo -->
+
+    <!-- ── Pane 2: Setup Guide ── -->
+    <div class="zwa-tab-pane" id="zwa-pane-setup" role="tabpanel" aria-labelledby="zwa-tab-setup" hidden>
+      <div class="zwa-setup-steps" id="zwa-setup-steps"></div>
+    </div>
+
+    <!-- ── Pane 3: Widget Config ── -->
+    <div class="zwa-tab-pane" id="zwa-pane-config" role="tabpanel" aria-labelledby="zwa-tab-config" hidden>
+
+      <div class="zwa-config-card">
+        <h3>📦 widgetManifest.json</h3>
+        <p>This is the widget manifest that defines the widget's identity, location (Workboard module, Record Detail), and required API permissions. Include this file in your widget ZIP when uploading to Zoho CRM.</p>
+        <div class="zwa-code-block" id="zwa-manifest-code"><button class="zwa-copy-btn" id="zwa-copy-manifest-btn">⎘ Copy</button>{
+  "uniqueName": "workboard_zia_assistant",
+  "displayName": "Workboard AI Assistant",
+  "version": "1.0.0",
+  "platform": "ZohoCRM",
+  "type": "Custom Widget",
+  "location": [
+    {
+      "module": "Workboard",
+      "type": "Record Detail",
+      "position": "Custom Button"
+    }
+  ],
+  "permissions": [
+    "ZohoCRM.modules.workboard.READ",
+    "ZohoCRM.modules.workboard.UPDATE",
+    "ZohoCRM.blueprint.READ",
+    "ZohoZia.assistant.EXECUTE"
+  ],
+  "apiDomain": "https://www.zohoapis.com",
+  "homepage": "index.html"
+}</div>
+      </div>
+
+      <div class="zwa-config-card">
+        <h3>📁 Widget File Structure</h3>
+        <p>Upload a ZIP containing these files to Zoho CRM under <strong>Setup → Developer Space → Widgets</strong>:</p>
+        <div class="zwa-code-block">zoho-crm-widget/
+├── widgetManifest.json   ← Widget metadata &amp; permissions
+├── index.html            ← Widget UI (AI assistant panel)
+├── app.css               ← Widget styles
+└── app.js                ← Widget logic (ZOHO SDK + Zia API)</div>
+      </div>
+
+      <div class="zwa-config-card">
+        <h3>💻 Client Script Deployment</h3>
+        <p>The <strong>client-script.js</strong> is a Zoho CRM Client Script (not part of the widget ZIP). Deploy it separately via <strong>Setup → Developer Space → Client Script</strong> with module = Workboard, event = Page Load – Detail. It injects the floating AI icon button on every Workboard record detail page.</p>
+        <div class="zwa-code-block">File: zoho-crm-widget/client-script.js
+
+Deployment:
+  Module  → Workboard
+  Event   → Page Load – Detail
+  Action  → Paste script contents, save &amp; activate
+
+After widget upload, update the WIDGET_ID constant in client-script.js
+to match the Widget ID shown in the Zoho CRM Widgets list.</div>
+      </div>
+
+      <div class="zwa-config-card">
+        <h3>🔑 Required OAuth Connections</h3>
+        <p>Create these connections under <strong>Setup → Developer Space → Connections</strong>:</p>
+        <div class="zwa-code-block">Connection Name : zia_connection
+Service         : Zoho OAuth (Zia)
+Scope           : ZohoZia.assistant.EXECUTE
+Used by         : Widget (app.js) to call Zia AI API
+
+Connection Name : crm_connection  (auto-available in widgets)
+Service         : Zoho CRM
+Scope           : ZohoCRM.modules.workboard.READ
+Used by         : Widget (app.js) to fetch record &amp; blueprint stage</div>
+      </div>
+
+    </div><!-- /#zwa-pane-config -->
+
+  </div><!-- /.zwa-wrap -->
+</div><!-- /#section-zoho-ai -->
+
+<!-- ── Section 5: History ── -->
 <div id="section-history" role="tabpanel" aria-labelledby="tab-history" hidden>
     <div class="hist-wrap">
 
@@ -248,6 +433,7 @@
 
 <script src="test-case-generator.js"></script>
 <script src="test-case-summary.js"></script>
+<script src="zoho-workboard-ai.js"></script>
 <script src="history.js"></script>
 <script>
 (function () {

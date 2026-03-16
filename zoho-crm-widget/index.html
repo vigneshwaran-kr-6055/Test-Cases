@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workboard AI Assistant</title>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+
+<!-- ── Launcher button (AI icon) injected into the record page ── -->
+<button class="zia-launcher" id="zia-launcher" aria-label="Open Zia AI Assistant" title="Zia AI Assistant">
+  <svg class="zia-icon" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <!-- Robot / AI face -->
+    <circle cx="18" cy="18" r="17" fill="#1a73e8" stroke="#fff" stroke-width="1.5"/>
+    <rect x="10" y="12" width="16" height="11" rx="3" fill="#fff" opacity="0.18"/>
+    <circle cx="14" cy="17" r="2.2" fill="#fff"/>
+    <circle cx="22" cy="17" r="2.2" fill="#fff"/>
+    <rect x="13" y="22" width="10" height="2" rx="1" fill="#fff" opacity="0.7"/>
+    <rect x="16" y="8" width="4" height="3" rx="1" fill="#fff" opacity="0.6"/>
+    <circle cx="18" cy="8" r="1.2" fill="#fff"/>
+    <!-- Sparkles -->
+    <path d="M5 8l1 2 2 1-2 1-1 2-1-2-2-1 2-1z" fill="#ffd54f"/>
+    <path d="M29 5l.7 1.4 1.4.7-1.4.7L29 9.2l-.7-1.4-1.4-.7 1.4-.7z" fill="#ffd54f"/>
+  </svg>
+  <span class="zia-pulse"></span>
+</button>
+
+<!-- ── AI Assistant Panel ── -->
+<div class="zia-panel" id="zia-panel" role="dialog" aria-modal="true" aria-labelledby="zia-panel-title" hidden>
+  <div class="zia-panel-header">
+    <div class="zia-panel-title-row">
+      <svg class="zia-header-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="12" cy="12" r="11" fill="#1a73e8"/>
+        <circle cx="9" cy="11" r="1.5" fill="#fff"/>
+        <circle cx="15" cy="11" r="1.5" fill="#fff"/>
+        <rect x="8.5" y="14" width="7" height="1.5" rx="0.75" fill="#fff" opacity="0.8"/>
+        <rect x="10.5" y="5" width="3" height="2" rx="1" fill="#fff" opacity="0.7"/>
+      </svg>
+      <h2 id="zia-panel-title">Zia AI Assistant</h2>
+    </div>
+    <button class="zia-close-btn" id="zia-close-btn" aria-label="Close AI Assistant">✕</button>
+  </div>
+
+  <!-- Stage badge -->
+  <div class="zia-stage-bar">
+    <span class="zia-stage-label">Current Stage</span>
+    <span class="zia-stage-badge" id="zia-stage-badge">Loading…</span>
+  </div>
+
+  <!-- Tab bar inside panel -->
+  <div class="zia-tabs" role="tablist">
+    <button class="zia-tab active" id="zia-tab-guide"    role="tab" aria-selected="true"  aria-controls="zia-pane-guide">💡 Guide</button>
+    <button class="zia-tab"        id="zia-tab-required" role="tab" aria-selected="false" aria-controls="zia-pane-required">📋 Required Fields</button>
+    <button class="zia-tab"        id="zia-tab-suggest"  role="tab" aria-selected="false" aria-controls="zia-pane-suggest">✨ Suggestions</button>
+  </div>
+
+  <!-- Guide pane -->
+  <div class="zia-pane" id="zia-pane-guide" role="tabpanel" aria-labelledby="zia-tab-guide">
+    <div class="zia-chat-area" id="zia-chat-area">
+      <div class="zia-message zia-bot" id="zia-intro-msg">
+        <div class="zia-avatar">🤖</div>
+        <div class="zia-bubble">Hi! I'm Zia. Loading your workboard context…</div>
+      </div>
+    </div>
+    <form class="zia-input-row" id="zia-input-form" autocomplete="off">
+      <input type="text" class="zia-input" id="zia-user-input"
+             placeholder="Ask Zia anything about this workboard…"
+             aria-label="Ask Zia" maxlength="500" />
+      <button type="submit" class="zia-send-btn" id="zia-send-btn" aria-label="Send">
+        <svg viewBox="0 0 20 20" fill="currentColor" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <path d="M2.94 17.07L18 10 2.94 2.93 2 8.5l10.5 1.5L2 11.5z"/>
+        </svg>
+      </button>
+    </form>
+  </div>
+
+  <!-- Required fields pane -->
+  <div class="zia-pane" id="zia-pane-required" role="tabpanel" aria-labelledby="zia-tab-required" hidden>
+    <div class="zia-required-list" id="zia-required-list">
+      <p class="zia-loading-text">Loading required fields for this stage…</p>
+    </div>
+  </div>
+
+  <!-- Suggestions pane -->
+  <div class="zia-pane" id="zia-pane-suggest" role="tabpanel" aria-labelledby="zia-tab-suggest" hidden>
+    <div class="zia-suggestions-list" id="zia-suggestions-list">
+      <p class="zia-loading-text">Analysing workboard record for suggestions…</p>
+    </div>
+  </div>
+</div>
+
+<!-- ZOHO CRM Embedded App SDK -->
+<script src="https://live.zwidgets.com/js-sdk/1.2/ZohoEmbeddedAppSDK.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
