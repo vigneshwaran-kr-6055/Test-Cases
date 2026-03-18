@@ -240,7 +240,7 @@ const TEMPLATES = [
     // 6. Security — generated when auth/security keywords present
     {
         id: 'security-check',
-        technique: 'Security Testing (OWASP)',
+        technique: 'Security Testing',
         condition: text => { const lower = text.toLowerCase(); return SECURITY_RULE_KEYWORDS.some(kw => lower.includes(kw)); },
         generate(ucText, ucRef, feature) {
             return [{
@@ -1401,8 +1401,7 @@ async function extractPdfText(arrayBuffer) {
         const techList = Array.from(techSet);
         if (techList.length === 0) { banner.hidden = true; return; }
         const techHtml = techList.map(t => `<span class="tech-badge">${esc(t)}</span>`).join(' ');
-        banner.innerHTML = '<strong>📐 ISTQB Test Design Techniques Applied:</strong> ' + techHtml
-            + '<span class="standards-ref">Standards: ISTQB CTFL · IEEE 829 · OWASP Testing Guide</span>';
+        banner.innerHTML = '<strong>📐 Test Design Techniques Applied:</strong> ' + techHtml;
         banner.hidden = false;
     }
 

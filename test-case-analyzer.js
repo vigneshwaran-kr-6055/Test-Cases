@@ -100,7 +100,7 @@ const FUNCTIONAL_CHECKS = [
       scenarios: [
         'Verify all interactive elements are reachable and operable via keyboard alone.',
         'Verify ARIA labels / roles are present on all form controls and icons.',
-        'Verify colour contrast ratios meet WCAG AA standards (4.5:1 for normal text).',
+        'Verify colour contrast ratios are sufficient for readability (minimum 4.5:1 for normal text).',
         'Verify focus order follows a logical reading sequence.',
         'Verify screen-reader announcements are made for dynamic content updates.',
       ]},
@@ -675,17 +675,17 @@ function reviewTestCaseQuality(rows, cols) {
     /* ── 1. Field completeness metrics ── */
     const fieldChecks = [
         { key: 'testCaseId',    label: 'Test Case ID',            weight: 8,
-          desc: 'Unique identifier for each test case (IEEE 829 §4.1)' },
+          desc: 'Unique identifier for each test case' },
         { key: 'testCase',      label: 'Test Case Title/Description', weight: 12,
-          desc: 'Clear name describing what is being tested (ISTQB best practice)' },
+          desc: 'Clear, descriptive name of what is being tested' },
         { key: 'precondition',  label: 'Preconditions',           weight: 5,
-          desc: 'Environmental or state conditions required before execution (IEEE 829 §4.3)' },
+          desc: 'Environmental or state conditions required before execution' },
         { key: 'steps',         label: 'Test Steps',              weight: 10,
-          desc: 'Numbered, action-oriented steps for test execution (IEEE 829 §4.4)' },
+          desc: 'Numbered, action-oriented steps for test execution' },
         { key: 'expectedResult',label: 'Expected Results',        weight: 10,
-          desc: 'Specific, measurable outcome for each test (IEEE 829 §4.5)' },
+          desc: 'Specific, measurable outcome for each test' },
         { key: 'severity',      label: 'Severity / Priority',     weight: 5,
-          desc: 'Risk-based priority to guide execution order (ISTQB risk-based testing)' },
+          desc: 'Risk-based priority to guide execution order' },
     ];
 
     const fieldMetrics = fieldChecks.map(fc => {
@@ -748,9 +748,9 @@ function reviewTestCaseQuality(rows, cols) {
 
     /* ── Coverage checklist ── */
     const coverageItems = [
-        { label: 'Positive / Happy-path tests',    present: hasPositive, std: 'ISTQB: Positive Testing' },
-        { label: 'Negative / Invalid-input tests', present: hasNegative, std: 'ISTQB: Error Guessing / Negative Testing' },
-        { label: 'Boundary / Limit-value tests',   present: hasBoundary, std: 'ISTQB: Boundary Value Analysis (BVA)' },
+        { label: 'Positive / Happy-path tests',    present: hasPositive },
+        { label: 'Negative / Invalid-input tests', present: hasNegative },
+        { label: 'Boundary / Limit-value tests',   present: hasBoundary },
     ];
 
     /* ── Recommendations ── */
@@ -763,13 +763,13 @@ function reviewTestCaseQuality(rows, cols) {
         }
     });
     if (cols.expectedResult && expFilled > 0 && expQualScore < 70) {
-        recommendations.push('⚠ <strong>Expected results</strong> lack specificity in ' + (100 - expQualScore) + '% of test cases. Use action verbs and measurable outcomes (e.g. "The system displays a success message" rather than "It works correctly"). Ref: IEEE 829 §4.5.');
+        recommendations.push('⚠ <strong>Expected results</strong> lack specificity in ' + (100 - expQualScore) + '% of test cases. Use action verbs and measurable outcomes — e.g. "The system displays a success message" rather than "It works correctly".');
     }
     if (!hasNegative) {
-        recommendations.push('⚠ <strong>No negative test cases detected.</strong> Add tests for invalid inputs, error messages, and rejection scenarios — ISTQB: Error Guessing / Negative Testing.');
+        recommendations.push('⚠ <strong>No negative test cases detected.</strong> Add tests for invalid inputs, error messages, and rejection scenarios.');
     }
     if (!hasBoundary) {
-        recommendations.push('⚠ <strong>No boundary value tests detected.</strong> Add tests at minimum, maximum, and just-outside-limit values — ISTQB: Boundary Value Analysis (BVA).');
+        recommendations.push('⚠ <strong>No boundary value tests detected.</strong> Add tests at minimum, maximum, and just-outside-limit values.');
     }
     if (!hasPositive) {
         recommendations.push('⚠ <strong>No positive / happy-path tests detected.</strong> Verify that core functional flows succeed with valid inputs.');
@@ -1114,11 +1114,11 @@ function analyzeTestCases(rows) {
             + '</div>'
             + '<div class="review-grade-details">'
             + '<strong style="color:' + escapeHtml(q.gradeColor) + ';font-size:1.1rem">' + escapeHtml(q.gradeLabel) + '</strong>'
-            + '<p style="margin:4px 0 0;font-size:.88rem;color:var(--text-muted,#555)">Overall quality score based on IEEE 829 field completeness, expected result verifiability, and ISTQB coverage balance.</p>'
+            + '<p style="margin:4px 0 0;font-size:.88rem;color:var(--text-muted,#555)">Overall quality score based on field completeness, expected result verifiability, and coverage balance.</p>'
             + '</div></div>';
 
         /* ── Field completeness table ── */
-        html += '<h4 style="margin:16px 0 8px;font-size:.9rem;font-weight:700;color:var(--accent,#1a73e8)">📋 IEEE 829 Field Completeness</h4>';
+        html += '<h4 style="margin:16px 0 8px;font-size:.9rem;font-weight:700;color:var(--accent,#1a73e8)">📋 Field Completeness</h4>';
         html += '<div class="review-field-grid">';
         q.fieldMetrics.forEach(function (fm) {
             const icon  = fm.colMissing ? '❌' : (fm.pct >= 90 ? '✅' : fm.pct >= 50 ? '⚠' : '❌');
@@ -1136,13 +1136,12 @@ function analyzeTestCases(rows) {
         html += '</div>';
 
         /* ── Coverage balance checklist ── */
-        html += '<h4 style="margin:16px 0 8px;font-size:.9rem;font-weight:700;color:var(--accent,#1a73e8)">🔬 ISTQB Coverage Balance</h4>';
+        html += '<h4 style="margin:16px 0 8px;font-size:.9rem;font-weight:700;color:var(--accent,#1a73e8)">🔬 Coverage Balance</h4>';
         html += '<ul class="review-coverage-list">';
         q.coverageItems.forEach(function (ci) {
             html += '<li>'
                 + (ci.present ? '✅' : '❌')
                 + ' <strong>' + escapeHtml(ci.label) + '</strong>'
-                + ' <span class="review-std-badge">' + escapeHtml(ci.std) + '</span>'
                 + '</li>';
         });
         html += '</ul>';
@@ -1154,7 +1153,7 @@ function analyzeTestCases(rows) {
                 + '<span class="review-exp-label">Expected Result Verifiability:</span>'
                 + '<div class="review-field-bar-wrap" style="flex:1;max-width:180px"><div class="review-field-bar" style="width:' + q.expQualScore + '%;background:' + expColor + '"></div></div>'
                 + '<strong style="color:' + expColor + '">' + q.expQualScore + '%</strong>'
-                + '<span class="review-field-desc">Use specific, measurable outcomes — e.g. "The system displays a success toast" (IEEE 829 §4.5)</span>'
+                + '<span class="review-field-desc">Use specific, measurable outcomes — e.g. "The system displays a success toast"</span>'
                 + '</div>';
         }
 
@@ -1171,6 +1170,93 @@ function analyzeTestCases(rows) {
         }
 
         body.innerHTML = html;
+
+        /* ── Suggested Missing Test Cases (by category) ── */
+        const categoryDefs = [
+            { key: 'functional',    icon: '⚙️', label: 'Functional Tests',    data: r.functional },
+            { key: 'privacy',       icon: '🔒', label: 'Privacy Tests',        data: r.privacy },
+            { key: 'security',      icon: '🛡',  label: 'Security Tests',       data: r.security },
+            { key: 'performance',   icon: '⚡', label: 'Performance Tests',    data: r.performance },
+            { key: 'compatibility', icon: '🌐', label: 'Compatibility Tests',  data: r.compatibility },
+        ];
+
+        const missingByCategory = categoryDefs
+            .map(function (cat) {
+                const missing = (cat.data || []).filter(function (c) { return !c.covered && !c.notApplicable; });
+                return { icon: cat.icon, label: cat.label, missing: missing };
+            })
+            .filter(function (cat) { return cat.missing.length > 0; });
+
+        if (missingByCategory.length > 0) {
+            const missingSection = document.createElement('details');
+            missingSection.className = 'review-missing-section';
+            missingSection.open = true;
+
+            const summary = document.createElement('summary');
+            summary.style.cssText = 'cursor:pointer;font-weight:700;font-size:.9rem;color:var(--accent,#1a73e8);list-style:none;outline:none;margin-top:20px;padding-top:16px;border-top:1px solid var(--border,#e0e0e0)';
+            const totalMissing = missingByCategory.reduce(function (s, c) { return s + c.missing.length; }, 0);
+            summary.innerHTML = '🔍 Suggested Missing Test Cases <span style="font-weight:400;font-size:.8rem;background:#e53935;color:#fff;border-radius:10px;padding:1px 8px;margin-left:6px">' + escapeHtml(String(totalMissing)) + ' gaps</span>';
+            missingSection.appendChild(summary);
+
+            missingByCategory.forEach(function (cat) {
+                const catDiv = document.createElement('div');
+                catDiv.style.cssText = 'margin-top:12px';
+
+                const catHeader = document.createElement('h5');
+                catHeader.style.cssText = 'margin:0 0 6px;font-size:.85rem;font-weight:700;color:var(--text,#222)';
+                catHeader.textContent = cat.icon + ' ' + cat.label;
+                catDiv.appendChild(catHeader);
+
+                const ul = document.createElement('ul');
+                ul.className = 'gap-list';
+                ul.style.cssText = 'padding-left:0;list-style:none;margin:0';
+
+                cat.missing.forEach(function (c) {
+                    const li = document.createElement('li');
+                    li.className = 'gap-item expandable';
+                    li.setAttribute('role', 'button');
+                    li.setAttribute('aria-expanded', 'false');
+                    li.setAttribute('tabindex', '0');
+                    const safeSeverity = ['critical', 'major', 'minor', 'showstopper'].includes(c.severity) ? c.severity : 'minor';
+                    li.innerHTML = '<span class="icon-mark">❌</span>'
+                        + '<span class="gap-label">' + escapeHtml(c.label) + '</span>'
+                        + '<span class="severity-badge severity-' + safeSeverity + '">' + escapeHtml(c.severity) + '</span>'
+                        + '<span class="expand-arrow" aria-hidden="true">▶</span>';
+
+                    if (c.scenarios && c.scenarios.length) {
+                        const panel = document.createElement('div');
+                        panel.className = 'scenarios-panel';
+                        panel.setAttribute('aria-hidden', 'true');
+                        const scenUl = document.createElement('ul');
+                        c.scenarios.forEach(function (s) {
+                            const item = document.createElement('li');
+                            item.textContent = s;
+                            scenUl.appendChild(item);
+                        });
+                        panel.appendChild(scenUl);
+                        li.appendChild(panel);
+
+                        function toggleScenarios() {
+                            const expanded = li.getAttribute('aria-expanded') === 'true';
+                            li.setAttribute('aria-expanded', String(!expanded));
+                            panel.setAttribute('aria-hidden', String(expanded));
+                            li.classList.toggle('open', !expanded);
+                        }
+                        li.addEventListener('click', toggleScenarios);
+                        li.addEventListener('keydown', function (e) {
+                            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleScenarios(); }
+                        });
+                    }
+                    ul.appendChild(li);
+                });
+
+                catDiv.appendChild(ul);
+                missingSection.appendChild(catDiv);
+            });
+
+            body.appendChild(missingSection);
+        }
+
         secReviewQuality.classList.add('visible');
     }
 
