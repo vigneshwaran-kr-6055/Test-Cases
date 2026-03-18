@@ -107,6 +107,7 @@ const TEMPLATES = [
     // 1. Happy / positive path — always generated
     {
         id: 'happy-path',
+        technique: 'Positive Testing',
         generate(ucText, ucRef, feature, ctx) {
             const { action, entity, actor, module } = ctx || {};
             return [{
@@ -128,6 +129,7 @@ const TEMPLATES = [
     // 2. Negative / invalid input path — always generated
     {
         id: 'negative-path',
+        technique: 'Negative Testing / Error Guessing',
         generate(ucText, ucRef, feature, ctx) {
             const { action, entity, actor, module } = ctx || {};
             return [{
@@ -149,6 +151,7 @@ const TEMPLATES = [
     // 3. Boundary conditions — generated when numeric/limit keywords present
     {
         id: 'boundary',
+        technique: 'Boundary Value Analysis (BVA)',
         condition: text => BOUNDARY_RE.test(text),
         generate(ucText, ucRef, feature) {
             return [{
@@ -177,6 +180,7 @@ const TEMPLATES = [
     // 4. UI / display — generated when UI keywords present
     {
         id: 'ui-check',
+        technique: 'UI Verification',
         condition: text => { const lower = text.toLowerCase(); return UI_RULE_KEYWORDS.some(kw => lower.includes(kw)); },
         generate(ucText, ucRef, feature) {
             return [{
@@ -204,6 +208,7 @@ const TEMPLATES = [
     // 5. Privacy — generated when personal-data keywords present
     {
         id: 'privacy-check',
+        technique: 'Privacy / GDPR Compliance Testing',
         condition: text => { const lower = text.toLowerCase(); return PRIVACY_RULE_KEYWORDS.some(kw => lower.includes(kw)); },
         generate(ucText, ucRef, feature) {
             return [{
@@ -232,6 +237,7 @@ const TEMPLATES = [
     // 6. Security — generated when auth/security keywords present
     {
         id: 'security-check',
+        technique: 'Security Testing (OWASP)',
         condition: text => { const lower = text.toLowerCase(); return SECURITY_RULE_KEYWORDS.some(kw => lower.includes(kw)); },
         generate(ucText, ucRef, feature) {
             return [{
@@ -259,6 +265,7 @@ const TEMPLATES = [
     // 7. Non-functional — generated when performance/reliability keywords present
     {
         id: 'non-functional-check',
+        technique: 'Non-Functional Testing (Performance / Reliability)',
         condition: text => { const lower = text.toLowerCase(); return NONFUNC_RULE_KEYWORDS.some(kw => lower.includes(kw)); },
         generate(ucText, ucRef, feature) {
             return [{
@@ -286,6 +293,7 @@ const TEMPLATES = [
     // 8. Equivalence partitioning — generated when input/field/form keywords present
     {
         id: 'equivalence-partitioning',
+        technique: 'Equivalence Partitioning (EP)',
         condition: text => /\b(field|form|input|textbox|text\s+box|enter|fill|type|format|data|value)\b/i.test(text),
         generate(ucText, ucRef, feature, ctx) {
             const { actor } = ctx || {};
@@ -317,6 +325,7 @@ const TEMPLATES = [
     // 9. State transition — generated when workflow/status/approval keywords present
     {
         id: 'state-transition',
+        technique: 'State Transition Testing',
         condition: text => /\b(approve|reject|submit|workflow|status|pending|active|inactive|enable|disable|draft|publish|cancel|confirm|transition|archive|close|reopen|escalate|assign|complete|in[- ]?progress)\b/i.test(text),
         generate(ucText, ucRef, feature, ctx) {
             const { entity, actor } = ctx || {};
@@ -350,6 +359,7 @@ const TEMPLATES = [
     // 10. Data persistence / integrity — generated when save/create/update keywords present
     {
         id: 'data-persistence',
+        technique: 'Data Integrity Testing',
         condition: text => /\b(save|create|add|update|edit|modify|submit|store|persist|record)\b/i.test(text),
         generate(ucText, ucRef, feature, ctx) {
             const { entity, actor } = ctx || {};
@@ -382,6 +392,7 @@ const TEMPLATES = [
     // 11. Cross-browser / platform compatibility — generated when UI keywords present
     {
         id: 'cross-platform',
+        technique: 'Compatibility Testing',
         condition: text => { const lower = text.toLowerCase(); return UI_RULE_KEYWORDS.some(kw => lower.includes(kw)); },
         generate(ucText, ucRef, feature) {
             return [{
@@ -411,6 +422,7 @@ const TEMPLATES = [
     // 12. Integration — generated when API/service/integration keywords present
     {
         id: 'integration-check',
+        technique: 'Integration Testing',
         condition: text => /\b(api|integration|webhook|third.?party|external|service|microservice|backend|rest|graphql|endpoint|connect|sync|exchange|notification|email)\b/i.test(text),
         generate(ucText, ucRef, feature, ctx) {
             const { entity, actor } = ctx || {};
@@ -872,7 +884,7 @@ function generateTestCases(useCases) {
             if (tpl.condition && !tpl.condition(text)) return;
             const produced = tpl.generate(text, ref, feature, ctx);
             produced.forEach(tc => {
-                allTCs.push({ id: `TC-${String(tcIndex++).padStart(3, '0')}`, ...tc });
+                allTCs.push({ id: `TC-${String(tcIndex++).padStart(3, '0')}`, technique: tpl.technique || 'Functional Testing', ...tc });
             });
         });
     });
@@ -1374,7 +1386,21 @@ async function extractPdfText(arrayBuffer) {
     /* ── Render results ── */
     function renderResults(tcs) {
         renderSummary(tcs);
+        renderStandardsBanner(tcs);
         renderTable(tcs);
+    }
+
+    function renderStandardsBanner(tcs) {
+        const banner = document.getElementById('gen-standards-banner');
+        if (!banner) return;
+        // Collect unique techniques used
+        const techSet = new Set(tcs.map(tc => tc.technique).filter(Boolean));
+        const techList = Array.from(techSet);
+        if (techList.length === 0) { banner.hidden = true; return; }
+        const techHtml = techList.map(t => `<span class="tech-badge">${esc(t)}</span>`).join(' ');
+        banner.innerHTML = '<strong>📐 ISTQB Test Design Techniques Applied:</strong> ' + techHtml
+            + '<span class="standards-ref">Standards: ISTQB CTFL · IEEE 829 · OWASP Testing Guide</span>';
+        banner.hidden = false;
     }
 
     function renderSummary(tcs) {
@@ -1428,6 +1454,7 @@ async function extractPdfText(arrayBuffer) {
                 <td>${expectedHtml}</td>
                 <td><span class="badge-severity sev-${esc(tc.severity)}">${esc(tc.severity)}</span></td>
                 <td><span class="badge-type type-${esc(tc.type)}">${esc(tc.type)}</span></td>
+                <td><span class="badge-technique">${esc(tc.technique || 'Functional Testing')}</span></td>
             `;
             tbody.appendChild(tr);
         });
@@ -1439,7 +1466,7 @@ async function extractPdfText(arrayBuffer) {
     if (btnExport) {
         btnExport.addEventListener('click', () => {
             if (!generatedTCs || !generatedTCs.length) return;
-            const header = ['Test Case ID', 'Use Case Ref', 'Test Case', 'Precondition', 'Steps', 'Expected Results', 'Severity', 'Type'];
+            const header = ['Test Case ID', 'Use Case Ref', 'Test Case', 'Precondition', 'Steps', 'Expected Results', 'Severity', 'Type', 'Technique'];
             const rows   = generatedTCs.map(tc => [
                 tc.id,
                 tc.ucRef,
@@ -1449,6 +1476,7 @@ async function extractPdfText(arrayBuffer) {
                 tc.expectedResult || '',
                 tc.severity,
                 tc.type,
+                tc.technique || 'Functional Testing',
             ]);
             const csvContent = [header, ...rows]
                 .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))

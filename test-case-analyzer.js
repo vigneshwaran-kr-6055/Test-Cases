@@ -620,6 +620,179 @@ function generateFeatureSummary(testCaseTexts, features) {
 }
 
 /* ─────────────────────────────────────────────
+   Industry-standard column detection for review
+───────────────────────────────────────────── */
+
+/**
+ * Semantic column variants matched case-insensitively against spreadsheet headers.
+ * Used by reviewTestCaseQuality to locate required IEEE 829 fields.
+ */
+const REVIEWER_COL_MAP = {
+    testCaseId:     ['test case id', 'tc id', 'testcaseid', 'tc_id', 'test id', 'case id', 'id', '#'],
+    testCase:       ['test case', 'test name', 'title', 'scenario', 'test scenario', 'description', 'name', 'test'],
+    precondition:   ['precondition', 'pre-condition', 'pre condition', 'prerequisite', 'preconditions', 'setup'],
+    steps:          ['steps', 'step', 'test steps', 'test procedure', 'procedure', 'actions', 'action'],
+    expectedResult: ['expected results', 'expected result', 'expected outcome', 'expected', 'outcome', 'expected behavior'],
+    severity:       ['severity', 'priority', 'impact', 'risk level', 'criticality'],
+};
+
+function detectReviewerColumns(headers) {
+    const normalised = headers.map(h => String(h).trim().toLowerCase());
+    const result = {};
+    Object.entries(REVIEWER_COL_MAP).forEach(([field, variants]) => {
+        for (const v of variants) {
+            const idx = normalised.indexOf(v);
+            if (idx !== -1) { result[field] = headers[idx]; break; }
+        }
+    });
+    return result;
+}
+
+/* ─────────────────────────────────────────────
+   Test case review quality analyser
+   Evaluates the uploaded test cases against
+   IEEE 829 Test Case Specification &
+   ISTQB Test Design best practices.
+───────────────────────────────────────────── */
+
+/**
+ * Evaluate the quality of the uploaded test cases against industry standards.
+ *
+ * Scoring breakdown (100 pts total):
+ *  - Field completeness  40 pts  (presence + fill-rate of required IEEE 829 fields)
+ *  - Expected result quality 20 pts  (verifiable, measurable outcomes)
+ *  - Test steps quality  20 pts  (steps present and non-empty)
+ *  - Coverage balance    20 pts  (positive + negative + boundary scenarios)
+ *
+ * @param {Object[]} rows  - Parsed row objects.
+ * @param {Object}   cols  - Detected column map (from detectReviewerColumns).
+ * @returns {Object|null}
+ */
+function reviewTestCaseQuality(rows, cols) {
+    const total = rows.length;
+    if (!total) return null;
+
+    /* ── 1. Field completeness metrics ── */
+    const fieldChecks = [
+        { key: 'testCaseId',    label: 'Test Case ID',            weight: 8,
+          desc: 'Unique identifier for each test case (IEEE 829 §4.1)' },
+        { key: 'testCase',      label: 'Test Case Title/Description', weight: 12,
+          desc: 'Clear name describing what is being tested (ISTQB best practice)' },
+        { key: 'precondition',  label: 'Preconditions',           weight: 5,
+          desc: 'Environmental or state conditions required before execution (IEEE 829 §4.3)' },
+        { key: 'steps',         label: 'Test Steps',              weight: 10,
+          desc: 'Numbered, action-oriented steps for test execution (IEEE 829 §4.4)' },
+        { key: 'expectedResult',label: 'Expected Results',        weight: 10,
+          desc: 'Specific, measurable outcome for each test (IEEE 829 §4.5)' },
+        { key: 'severity',      label: 'Severity / Priority',     weight: 5,
+          desc: 'Risk-based priority to guide execution order (ISTQB risk-based testing)' },
+    ];
+
+    const fieldMetrics = fieldChecks.map(fc => {
+        if (!cols[fc.key]) {
+            return { label: fc.label, desc: fc.desc, pct: 0, present: false, colMissing: true, weight: fc.weight };
+        }
+        const filled = rows.filter(r => String(r[cols[fc.key]] || '').trim().length > 0).length;
+        return { label: fc.label, desc: fc.desc, pct: Math.round((filled / total) * 100), present: true, colMissing: false, weight: fc.weight };
+    });
+
+    /* ── 2. Field completeness score (40 pts) ── */
+    const maxFieldWeight = fieldChecks.reduce((s, f) => s + f.weight, 0);
+    let rawFieldScore = 0;
+    fieldMetrics.forEach(fm => {
+        if (!fm.colMissing) rawFieldScore += Math.round((fm.pct / 100) * fm.weight);
+    });
+    const fieldScore = Math.round((rawFieldScore / maxFieldWeight) * 40);
+
+    /* ── 3. Expected result quality score (20 pts) ── */
+    let clearExpected = 0;
+    let expFilled = 0;
+    if (cols.expectedResult) {
+        rows.forEach(r => {
+            const exp = String(r[cols.expectedResult] || '').trim();
+            if (!exp) return;
+            expFilled++;
+            // Verifiable outcomes: action verbs, UI states, numbers, error/success keywords
+            const isVerifiable = /\b(should|displays?|shows?|returns?|confirms?|navigates?|redirects?|updates?|creates?|deletes?|saves?|appears?|disappears?|enabled|disabled|visible|hidden|selected|checked|error|success|message|\d+\s*(ms|second|record|result|item|row|character|char|kb|mb))\b/i.test(exp);
+            if (isVerifiable) clearExpected++;
+        });
+    }
+    const expQualScore = expFilled > 0 ? Math.round((clearExpected / expFilled) * 100) : 0;
+    const expScore = cols.expectedResult ? Math.round((expQualScore / 100) * 20) : 0;
+
+    /* ── 4. Steps quality score (20 pts) ── */
+    let stepsScore = 0;
+    if (cols.steps) {
+        const stepsWithContent = rows.filter(r => String(r[cols.steps] || '').trim().length > 0).length;
+        stepsScore = Math.round((stepsWithContent / total) * 20);
+    } else if (cols.testCase) {
+        stepsScore = 10; // Partial credit when only a title/description column is present
+    }
+
+    /* ── 5. Coverage balance score (20 pts) ── */
+    const allText = rows.map(r => Object.values(r).join(' ').toLowerCase()).join(' ');
+    const hasPositive = /\b(valid|success|successful|positive|happy[\s-]?path|correct|verify that|able to|complete)\b/.test(allText);
+    const hasNegative = /\b(invalid|negative|error|fail|reject|not allowed|cannot|unable|blocked|denied|wrong|bad input)\b/.test(allText);
+    const hasBoundary = /\b(boundary|limit|min\b|max\b|maximum|minimum|overflow|empty|zero|null|edge[\s-]?case|out[\s-]of[\s-]range)\b/.test(allText);
+    const covScore    = (hasPositive ? 7 : 0) + (hasNegative ? 7 : 0) + (hasBoundary ? 6 : 0);
+
+    const totalScore = Math.min(100, fieldScore + expScore + stepsScore + covScore);
+
+    /* ── Grade ── */
+    let grade, gradeColor, gradeLabel;
+    if (totalScore >= 80)      { grade = 'A'; gradeColor = '#1b5e20'; gradeLabel = 'Excellent'; }
+    else if (totalScore >= 60) { grade = 'B'; gradeColor = '#2e7d32'; gradeLabel = 'Good'; }
+    else if (totalScore >= 40) { grade = 'C'; gradeColor = '#e65100'; gradeLabel = 'Fair'; }
+    else if (totalScore >= 20) { grade = 'D'; gradeColor = '#bf360c'; gradeLabel = 'Poor'; }
+    else                       { grade = 'F'; gradeColor = '#b71c1c'; gradeLabel = 'Inadequate'; }
+
+    /* ── Coverage checklist ── */
+    const coverageItems = [
+        { label: 'Positive / Happy-path tests',    present: hasPositive, std: 'ISTQB: Positive Testing' },
+        { label: 'Negative / Invalid-input tests', present: hasNegative, std: 'ISTQB: Error Guessing / Negative Testing' },
+        { label: 'Boundary / Limit-value tests',   present: hasBoundary, std: 'ISTQB: Boundary Value Analysis (BVA)' },
+    ];
+
+    /* ── Recommendations ── */
+    const recommendations = [];
+    fieldMetrics.forEach(fm => {
+        if (fm.colMissing) {
+            recommendations.push('❌ Add a <strong>' + escapeHtml(fm.label) + '</strong> column — ' + fm.desc + '.');
+        } else if (fm.pct < 80) {
+            recommendations.push('⚠ <strong>' + escapeHtml(fm.label) + '</strong> is empty in ' + (100 - fm.pct) + '% of rows. ' + fm.desc + '.');
+        }
+    });
+    if (cols.expectedResult && expFilled > 0 && expQualScore < 70) {
+        recommendations.push('⚠ <strong>Expected results</strong> lack specificity in ' + (100 - expQualScore) + '% of test cases. Use action verbs and measurable outcomes (e.g. "The system displays a success message" rather than "It works correctly"). Ref: IEEE 829 §4.5.');
+    }
+    if (!hasNegative) {
+        recommendations.push('⚠ <strong>No negative test cases detected.</strong> Add tests for invalid inputs, error messages, and rejection scenarios — ISTQB: Error Guessing / Negative Testing.');
+    }
+    if (!hasBoundary) {
+        recommendations.push('⚠ <strong>No boundary value tests detected.</strong> Add tests at minimum, maximum, and just-outside-limit values — ISTQB: Boundary Value Analysis (BVA).');
+    }
+    if (!hasPositive) {
+        recommendations.push('⚠ <strong>No positive / happy-path tests detected.</strong> Verify that core functional flows succeed with valid inputs.');
+    }
+    if (recommendations.length === 0) {
+        recommendations.push('✅ Test cases meet baseline quality standards. Continue adding security, performance, and exploratory tests for comprehensive coverage.');
+    }
+
+    return {
+        score: totalScore,
+        grade: grade,
+        gradeColor: gradeColor,
+        gradeLabel: gradeLabel,
+        fieldMetrics: fieldMetrics,
+        coverageItems: coverageItems,
+        expQualScore: expQualScore,
+        stepsScore: stepsScore,
+        covScore: covScore,
+        recommendations: recommendations,
+    };
+}
+
+/* ─────────────────────────────────────────────
    Main analysis entry-point
 ───────────────────────────────────────────── */
 
@@ -650,6 +823,10 @@ function analyzeTestCases(rows) {
     const features = extractFeatures(rows, featureCol);
     const featureSummary = generateFeatureSummary(allTexts, features);
 
+    // Industry-standard review quality assessment
+    const reviewCols    = detectReviewerColumns(headers);
+    const reviewQuality = reviewTestCaseQuality(rows, reviewCols);
+
     return {
         totalRows:   rows.length,
         headers,
@@ -664,6 +841,8 @@ function analyzeTestCases(rows) {
         compatibility: compatibilityResults,
         rows,
         featureSummary,
+        reviewCols,
+        reviewQuality,
     };
 }
 
@@ -679,6 +858,7 @@ function analyzeTestCases(rows) {
 
     const secSummary        = document.getElementById('sec-summary');
     const secFeatureSummary = document.getElementById('sec-feature-summary');
+    const secReviewQuality  = document.getElementById('sec-review-quality');
     const secFeatures       = document.getElementById('sec-features');
     const secFunctional     = document.getElementById('sec-functional');
     const secPrivacy        = document.getElementById('sec-privacy');
@@ -709,6 +889,7 @@ function analyzeTestCases(rows) {
             security:       result.security,
             performance:    result.performance,
             compatibility:  result.compatibility,
+            reviewQuality:  result.reviewQuality,
             headers:        result.headers,
             rows:           result.rows.slice(0, 200),
         };
@@ -731,7 +912,7 @@ function analyzeTestCases(rows) {
     }
 
     function clearResults() {
-        [secSummary, secFeatureSummary, secFeatures, secFunctional, secPrivacy, secSecurity, secPerformance, secCompatibility, secTable]
+        [secSummary, secFeatureSummary, secReviewQuality, secFeatures, secFunctional, secPrivacy, secSecurity, secPerformance, secCompatibility, secTable]
             .forEach(s => s && s.classList.remove('visible'));
     }
 
@@ -899,6 +1080,7 @@ function analyzeTestCases(rows) {
     function renderResults(r) {
         renderSummary(r);
         renderFeatureSummary(r);
+        renderReviewQuality(r);
         renderFeatures(r);
         renderGapSection(secFunctional,    'Functional Test Gaps',      r.functional,    r.features);
         renderGapSection(secPrivacy,       'Privacy Test Gaps',          r.privacy,       r.features);
@@ -912,6 +1094,84 @@ function analyzeTestCases(rows) {
         const container = document.getElementById('feature-summary-content');
         container.innerHTML = r.featureSummary;
         secFeatureSummary.classList.add('visible');
+    }
+
+    function renderReviewQuality(r) {
+        if (!secReviewQuality) return;
+        const q = r.reviewQuality;
+        if (!q) return;
+
+        const body = document.getElementById('review-quality-body');
+        if (!body) return;
+
+        /* ── Grade badge ── */
+        const badgeBg   = q.gradeColor + '18';
+        const badgeBdr  = q.gradeColor + '55';
+        let html = '<div class="review-grade-row">'
+            + '<div class="review-grade-circle" style="background:' + escapeHtml(badgeBg) + ';border:3px solid ' + escapeHtml(q.gradeColor) + ';color:' + escapeHtml(q.gradeColor) + '">'
+            + '<span class="review-grade-letter">' + escapeHtml(q.grade) + '</span>'
+            + '<span class="review-grade-score">' + q.score + '/100</span>'
+            + '</div>'
+            + '<div class="review-grade-details">'
+            + '<strong style="color:' + escapeHtml(q.gradeColor) + ';font-size:1.1rem">' + escapeHtml(q.gradeLabel) + '</strong>'
+            + '<p style="margin:4px 0 0;font-size:.88rem;color:var(--text-muted,#555)">Overall quality score based on IEEE 829 field completeness, expected result verifiability, and ISTQB coverage balance.</p>'
+            + '</div></div>';
+
+        /* ── Field completeness table ── */
+        html += '<h4 style="margin:16px 0 8px;font-size:.9rem;font-weight:700;color:var(--accent,#1a73e8)">📋 IEEE 829 Field Completeness</h4>';
+        html += '<div class="review-field-grid">';
+        q.fieldMetrics.forEach(function (fm) {
+            const icon  = fm.colMissing ? '❌' : (fm.pct >= 90 ? '✅' : fm.pct >= 50 ? '⚠' : '❌');
+            const color = fm.colMissing ? '#b71c1c' : (fm.pct >= 90 ? '#1b5e20' : fm.pct >= 50 ? '#e65100' : '#b71c1c');
+            const bar   = fm.colMissing ? 0 : fm.pct;
+            html += '<div class="review-field-item">'
+                + '<div class="review-field-label">' + icon + ' <span>' + escapeHtml(fm.label) + '</span>'
+                + (fm.colMissing ? ' <span class="review-missing-badge">column missing</span>' : '')
+                + '</div>'
+                + '<div class="review-field-bar-wrap"><div class="review-field-bar" style="width:' + bar + '%;background:' + color + '"></div></div>'
+                + '<span class="review-field-pct" style="color:' + color + '">' + (fm.colMissing ? 'N/A' : bar + '%') + '</span>'
+                + '<span class="review-field-desc">' + escapeHtml(fm.desc) + '</span>'
+                + '</div>';
+        });
+        html += '</div>';
+
+        /* ── Coverage balance checklist ── */
+        html += '<h4 style="margin:16px 0 8px;font-size:.9rem;font-weight:700;color:var(--accent,#1a73e8)">🔬 ISTQB Coverage Balance</h4>';
+        html += '<ul class="review-coverage-list">';
+        q.coverageItems.forEach(function (ci) {
+            html += '<li>'
+                + (ci.present ? '✅' : '❌')
+                + ' <strong>' + escapeHtml(ci.label) + '</strong>'
+                + ' <span class="review-std-badge">' + escapeHtml(ci.std) + '</span>'
+                + '</li>';
+        });
+        html += '</ul>';
+
+        /* ── Expected result quality ── */
+        if (r.reviewCols && r.reviewCols.expectedResult) {
+            const expColor = q.expQualScore >= 80 ? '#1b5e20' : q.expQualScore >= 50 ? '#e65100' : '#b71c1c';
+            html += '<div class="review-exp-quality">'
+                + '<span class="review-exp-label">Expected Result Verifiability:</span>'
+                + '<div class="review-field-bar-wrap" style="flex:1;max-width:180px"><div class="review-field-bar" style="width:' + q.expQualScore + '%;background:' + expColor + '"></div></div>'
+                + '<strong style="color:' + expColor + '">' + q.expQualScore + '%</strong>'
+                + '<span class="review-field-desc">Use specific, measurable outcomes — e.g. "The system displays a success toast" (IEEE 829 §4.5)</span>'
+                + '</div>';
+        }
+
+        /* ── Recommendations ── */
+        if (q.recommendations.length > 0) {
+            html += '<details class="review-recommendations" open>'
+                + '<summary style="cursor:pointer;font-weight:700;font-size:.9rem;color:var(--accent,#1a73e8);list-style:none;outline:none;margin-top:16px">'
+                + '💡 Recommendations</summary>'
+                + '<ul style="margin:10px 0 0 0;padding-left:0;list-style:none;line-height:1.8">';
+            q.recommendations.forEach(function (rec) {
+                html += '<li style="font-size:.88rem;padding:4px 0;border-bottom:1px solid var(--border,#e8e8e8)">' + rec + '</li>';
+            });
+            html += '</ul></details>';
+        }
+
+        body.innerHTML = html;
+        secReviewQuality.classList.add('visible');
     }
 
     function renderSummary(r) {

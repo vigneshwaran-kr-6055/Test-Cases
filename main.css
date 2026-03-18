@@ -1202,3 +1202,49 @@ body.hist-modal-open {
     .sum-model-select,
     .sum-apikey-input { min-width: unset; width: 100%; }
 }
+
+/* ===== Generator Standards Banner ===== */
+.gen-standards-banner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    margin-bottom: 14px;
+    background: var(--chip-bg, #f0f4ff);
+    border: 1px solid var(--border, #d0d8f0);
+    border-radius: 8px;
+    font-size: .84rem;
+    color: var(--text, #333);
+    line-height: 1.6;
+}
+.gen-standards-banner strong { color: var(--accent, #1a73e8); }
+.standards-ref {
+    margin-left: 6px;
+    font-style: italic;
+    opacity: .72;
+    font-size: .8rem;
+}
+
+/* Technique badge in generator table */
+.badge-technique {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: .75rem;
+    font-weight: 600;
+    background: var(--chip-bg, #eef2ff);
+    color: var(--accent, #1a73e8);
+    border: 1px solid var(--border, #d0d8f0);
+    white-space: nowrap;
+}
+/* Technique badge in standards banner */
+.tech-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 5px;
+    background: var(--accent, #1a73e8);
+    color: #fff;
+    font-size: .75rem;
+    font-weight: 600;
+}
