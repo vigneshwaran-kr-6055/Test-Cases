@@ -92,6 +92,9 @@ const SECURITY_RULE_KEYWORDS = TYPE_RULES.find(r => r.type === 'security').keywo
 const NONFUNC_RULE_KEYWORDS  = TYPE_RULES.find(r => r.type === 'non-functional').keywords;
 const BOUNDARY_RE = /\b(limit|max|min|maximum|minimum|length|count|number|characters?|size|range|value|amount|quantity)\b/i;
 
+/** Default ISTQB technique label used when a template does not specify one. */
+const DEFAULT_TECHNIQUE = 'Functional Testing';
+
 /* ─────────────────────────────────────────────
    Test case template generators
 ───────────────────────────────────────────── */
@@ -884,7 +887,7 @@ function generateTestCases(useCases) {
             if (tpl.condition && !tpl.condition(text)) return;
             const produced = tpl.generate(text, ref, feature, ctx);
             produced.forEach(tc => {
-                allTCs.push({ id: `TC-${String(tcIndex++).padStart(3, '0')}`, technique: tpl.technique || 'Functional Testing', ...tc });
+                allTCs.push({ id: `TC-${String(tcIndex++).padStart(3, '0')}`, technique: tpl.technique || DEFAULT_TECHNIQUE, ...tc });
             });
         });
     });
@@ -1454,7 +1457,7 @@ async function extractPdfText(arrayBuffer) {
                 <td>${expectedHtml}</td>
                 <td><span class="badge-severity sev-${esc(tc.severity)}">${esc(tc.severity)}</span></td>
                 <td><span class="badge-type type-${esc(tc.type)}">${esc(tc.type)}</span></td>
-                <td><span class="badge-technique">${esc(tc.technique || 'Functional Testing')}</span></td>
+                <td><span class="badge-technique">${esc(tc.technique || DEFAULT_TECHNIQUE)}</span></td>
             `;
             tbody.appendChild(tr);
         });
@@ -1476,7 +1479,7 @@ async function extractPdfText(arrayBuffer) {
                 tc.expectedResult || '',
                 tc.severity,
                 tc.type,
-                tc.technique || 'Functional Testing',
+                tc.technique || DEFAULT_TECHNIQUE,
             ]);
             const csvContent = [header, ...rows]
                 .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
