@@ -554,23 +554,23 @@ function analyzeTestQuality(rows, cols) {
     else if (score >= 2) { qualityLabel = 'Basic Coverage';     qualityColor = '#bf360c'; }
     else                 { qualityLabel = 'Minimal Coverage';   qualityColor = '#b71c1c'; }
 
-    /* Per-dimension insights */
+    /* Per-dimension insights with ISTQB/industry standard references */
     var insights = [];
-    if (hasPositive)      insights.push('✅ Positive / happy-path scenarios detected');
-    else                  insights.push('⚠ No clear positive/happy-path tests found — consider adding successful workflow tests');
-    if (hasNegative)      insights.push('✅ Negative / error-path scenarios detected');
-    else                  insights.push('⚠ No negative / invalid-input tests found — add tests for error messages and rejections');
-    if (hasBoundary)      insights.push('✅ Boundary / edge-case tests detected');
-    else                  insights.push('⚠ No boundary value tests found — consider min/max/empty/null input coverage');
-    if (hasSecurity)      insights.push('✅ Security-related tests detected');
-    else                  insights.push('⚠ No security tests found — consider authentication, authorization, and injection tests');
-    if (hasPerformance)   insights.push('✅ Performance / load tests detected');
-    else                  insights.push('⚠ No performance tests found — consider response time, load, and timeout scenarios');
-    if (hasUi)            insights.push('✅ UI / visual validation tests detected');
-    if (hasAccessibility) insights.push('✅ Accessibility (WCAG) tests detected');
-    else                  insights.push('⚠ No accessibility tests found — consider keyboard navigation and ARIA coverage');
-    if (hasDataIntegrity) insights.push('✅ Data integrity / persistence tests detected');
-    if (hasStateTrans)    insights.push('✅ State transition / workflow tests detected');
+    if (hasPositive)      insights.push('✅ Positive / happy-path scenarios detected (ISTQB: Positive Testing)');
+    else                  insights.push('⚠ No clear positive/happy-path tests found — add successful workflow tests (ISTQB: Positive Testing)');
+    if (hasNegative)      insights.push('✅ Negative / error-path scenarios detected (ISTQB: Error Guessing / Negative Testing)');
+    else                  insights.push('⚠ No negative / invalid-input tests found — add error message and rejection tests (ISTQB: Error Guessing)');
+    if (hasBoundary)      insights.push('✅ Boundary / edge-case tests detected (ISTQB: Boundary Value Analysis)');
+    else                  insights.push('⚠ No boundary value tests found — add min/max/empty/null input coverage (ISTQB: BVA)');
+    if (hasSecurity)      insights.push('✅ Security-related tests detected (OWASP Testing Guide / ISTQB Security Testing)');
+    else                  insights.push('⚠ No security tests found — add authentication, authorization, and injection tests (OWASP Top 10)');
+    if (hasPerformance)   insights.push('✅ Performance / load tests detected (ISTQB: Non-Functional Testing)');
+    else                  insights.push('⚠ No performance tests found — add response time, load, and timeout scenarios (ISTQB: Non-Functional Testing)');
+    if (hasUi)            insights.push('✅ UI / visual validation tests detected (ISTQB: UI Testing)');
+    if (hasAccessibility) insights.push('✅ Accessibility (WCAG / ARIA) tests detected — aligns with WCAG 2.1 AA standard');
+    else                  insights.push('⚠ No accessibility tests found — add keyboard navigation and ARIA checks (WCAG 2.1 / ISTQB Usability)');
+    if (hasDataIntegrity) insights.push('✅ Data integrity / persistence tests detected (IEEE 829: Data Integrity)');
+    if (hasStateTrans)    insights.push('✅ State transition / workflow tests detected (ISTQB: State Transition Testing)');
 
     return { qualityLabel: qualityLabel, qualityColor: qualityColor, score: score, insights: insights };
 }
@@ -1235,7 +1235,9 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
                 + 'border:1px solid var(--border,#e0e0e0);border-radius:8px;background:var(--card-bg,#fafafa)">';
             html += '<summary style="cursor:pointer;font-weight:600;font-size:.9rem;'
                 + 'color:var(--accent,#1a73e8);list-style:none;outline:none">'
-                + '📋 Coverage Quality Insights <span style="font-weight:400;font-size:.8rem;opacity:.7">(click to expand)</span>'
+                + '📋 Coverage Quality Insights'
+                + ' <span style="font-weight:400;font-size:.8rem;opacity:.7">'
+                + '(ISTQB · IEEE 829 · OWASP — click to expand)</span>'
                 + '</summary>';
             html += '<ul style="margin:10px 0 0 0;padding-left:20px;line-height:1.7">';
             quality.insights.forEach(function (insight) {
