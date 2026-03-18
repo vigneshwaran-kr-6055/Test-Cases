@@ -576,6 +576,323 @@ function analyzeTestQuality(rows, cols) {
 }
 
 /* ─────────────────────────────────────────────
+   Feature-flow & cross-module dependency helpers
+───────────────────────────────────────────── */
+
+/**
+ * Order use-case areas by their natural position in a typical software
+ * workflow.  Uses two complementary signals:
+ *   1. Precondition-graph — if module B's test preconditions mention module
+ *      A's keywords, A is ordered before B.
+ *   2. Pattern score — common verb/noun patterns (login < create < edit <
+ *      search < delete < export < error) provide a sensible default order
+ *      when precondition data is absent.
+ *
+ * @param {string[]} ucList   - Named use-case / feature-area labels.
+ * @param {Map}      ucGroups - Map returned by groupByUseCase().
+ * @param {Object}   cols     - Detected column map.
+ * @returns {string[]} Ordered copy of ucList (first = earliest in flow).
+ */
+function detectFlowOrder(ucList, ucGroups, cols) {
+    if (ucList.length <= 1) return ucList.slice();
+
+    /* Pattern-based position score (lower value = earlier in typical flow) */
+    function patternScore(uc) {
+        var l = uc.toLowerCase();
+        if (/\b(login|log[\s\-]?in|sign[\s\-]?in|auth|authenticat)\b/.test(l)) return 0;
+        if (/\b(setup|config|setting|onboard|register|install)\b/.test(l))      return 1;
+        if (/\b(dashboard|home|landing|overview|main)\b/.test(l))               return 2;
+        if (/\b(creat|add\b|new\b|import|upload)\b/.test(l))                   return 3;
+        if (/\b(view|list|browse|read|display|show)\b/.test(l))                 return 4;
+        if (/\b(edit|updat|modif|chang|renam|move)\b/.test(l))                  return 5;
+        if (/\b(search|filter|sort|find)\b/.test(l))                            return 6;
+        if (/\b(delet|remov|archiv|purg)\b/.test(l))                            return 7;
+        if (/\b(export|download|report|generat)\b/.test(l))                     return 8;
+        if (/\b(notif|email|alert|message)\b/.test(l))                          return 9;
+        if (/\b(error|invalid|exception|edge|boundary)\b/.test(l))              return 10;
+        return 5;
+    }
+
+    /* Build a "depends-on" count: modules that many others depend on should
+     * appear first.  We scan each module's precondition text for keywords
+     * from every other module's label. */
+    var dependentsOf = {};
+    ucList.forEach(function (uc) { dependentsOf[uc] = 0; });
+
+    if (cols && cols.precondition) {
+        ucList.forEach(function (ucA) {
+            var preText = (ucGroups.get(ucA) || []).map(function (r) {
+                return String(r[cols.precondition] || '').toLowerCase();
+            }).join(' ');
+
+            ucList.forEach(function (ucB) {
+                if (ucB === ucA) return;
+                var bKws = ucB.toLowerCase().replace(/[^\w\s]/g, ' ')
+                    .split(/\s+/).filter(function (w) { return w.length >= 4 && !SUM_STOP_WORDS.has(w); });
+                if (bKws.length > 0 && bKws.some(function (w) { return preText.indexOf(w) !== -1; })) {
+                    /* ucA depends on ucB → ucB should come first */
+                    dependentsOf[ucB] = (dependentsOf[ucB] || 0) + 1;
+                }
+            });
+        });
+    }
+
+    return ucList.slice().sort(function (a, b) {
+        /* Primary: more dependents ⇒ earlier */
+        var depDiff = (dependentsOf[b] || 0) - (dependentsOf[a] || 0);
+        if (depDiff !== 0) return depDiff;
+        /* Secondary: pattern score */
+        return patternScore(a) - patternScore(b);
+    });
+}
+
+/**
+ * Detect cross-module dependencies by scanning each use-case's precondition
+ * and step text for references to the names of other use-case / feature areas.
+ *
+ * @param {string[]} ucList   - Named use-case / feature-area labels.
+ * @param {Map}      ucGroups - Map returned by groupByUseCase().
+ * @param {Object}   cols     - Detected column map.
+ * @returns {{ from: string, to: string }[]} Dependency pairs where the `from`
+ *   module's tests reference concepts from the `to` module.
+ */
+function detectCrossModuleDeps(ucList, ucGroups, cols) {
+    var pairs = [];
+    if (!ucGroups || !cols || ucList.length < 2) return pairs;
+
+    /* Build a combined text corpus per module */
+    var ucTexts = {};
+    ucList.forEach(function (uc) {
+        var text = (ucGroups.get(uc) || []).map(function (r) {
+            var parts = [];
+            if (cols.precondition)   parts.push(String(r[cols.precondition]   || ''));
+            if (cols.steps)          parts.push(String(r[cols.steps]          || '').slice(0, SUM_MAX_FALLBACK_TEXT));
+            if (cols.expectedResult) parts.push(String(r[cols.expectedResult] || '').slice(0, SUM_DEP_MAX_EXP_TEXT));
+            return parts.join(' ');
+        }).join(' ').toLowerCase();
+        ucTexts[uc] = text;
+    });
+
+    /* Pre-compile one RegExp per keyword per module label to avoid repeated
+     * regexp construction inside the nested loop. */
+    var ucBPatterns = {};
+    ucList.forEach(function (ucB) {
+        var bKws = ucB.toLowerCase().replace(/[^\w\s]/g, ' ')
+            .split(/\s+/).filter(function (w) { return w.length >= 4 && !SUM_STOP_WORDS.has(w); });
+        ucBPatterns[ucB] = bKws.map(function (w) {
+            return new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+        });
+    });
+
+    ucList.forEach(function (ucA) {
+        ucList.forEach(function (ucB) {
+            if (ucA === ucB) return;
+            var patterns = ucBPatterns[ucB];
+            if (!patterns || patterns.length === 0) return;
+            /* Whole-word match to avoid substring false-positives */
+            var matched = patterns.some(function (re) { return re.test(ucTexts[ucA]); });
+            if (matched && !pairs.some(function (p) { return p.from === ucA && p.to === ucB; })) {
+                pairs.push({ from: ucA, to: ucB });
+            }
+        });
+    });
+
+    return pairs;
+}
+
+/**
+ * Build a concise 5–10 line plain-language HTML narrative of the entire test
+ * suite so that any stakeholder can read it and immediately understand:
+ *   (1) what the feature / product does,
+ *   (2) the primary user flow through the functional areas,
+ *   (3) cross-module touchpoints and dependencies,
+ *   (4) coverage breadth and notable gaps.
+ *
+ * @param {Object[]} rows    - All parsed test-case rows.
+ * @param {Object}   cols    - Detected column map.
+ * @param {Object}   stats   - Output of extractSumStats().
+ * @param {Object}   builtIn - Output of builtInSummarise() — { intro, capabilities }.
+ * @param {Object}   quality - Output of analyzeTestQuality().
+ * @returns {string} Safe HTML fragment.
+ */
+function buildNarrativeSummary(rows, cols, stats, builtIn, quality) {
+    var ucListRaw = stats.useCases.filter(function (uc) {
+        return uc && uc !== '(No Use Case)' && !SUM_GENERIC_UC_TERMS.has(uc.trim().toLowerCase());
+    });
+    var total    = rows.length;
+    var ucGroups = groupByUseCase(rows, cols);
+    var sentences = []; /* 5–10 items, each rendered as one <p> line */
+
+    /* ── 1. Feature overview ─────────────────────────────────────────────── */
+    var allScenarios = [];
+    rows.forEach(function (r) {
+        var name = (cols.testCase ? String(r[cols.testCase] || '') : '').trim();
+        if (name && !SUM_ID_PATTERN.test(name)) allScenarios.push(name);
+    });
+
+    /* For single-area suites use keyword detection from scenario titles.
+     * For multi-area suites (≥3 named areas) the product-level subject is best
+     * derived from the use-case labels themselves — avoids surfacing a noun
+     * that belongs only to one module (e.g. "Password" for a Login/Upload suite). */
+    var subject;
+    if (ucListRaw.length >= 3) {
+        /* Derive an application-level subject from the set of use-case names */
+        var ucText = extractTopKeywords(ucListRaw, 2);
+        subject = ucText.length ? ucText.join(' ') : null;
+    } else {
+        subject = detectSumSubject(allScenarios);
+        if (!subject && ucListRaw.length > 0) subject = ucListRaw[0];
+        if (!subject) {
+            var kws = extractTopKeywords(allScenarios.length ? allScenarios : [stats.useCases.join(' ')], 1);
+            subject = kws.length ? kws[0] : null;
+        }
+    }
+
+    if (ucListRaw.length >= 3) {
+        var topAreas = ucListRaw.slice(0, 4)
+            .map(function (u) { return '<strong>' + escSum(capFirst(u)) + '</strong>'; });
+        var areaJoined = topAreas.length === 1
+            ? topAreas[0]
+            : topAreas.slice(0, -1).join(', ') + ' and ' + topAreas[topAreas.length - 1];
+        var overviewIntro = subject
+            ? 'The <strong>' + escSum(capFirst(subject)) + '</strong> system is validated across '
+            : 'This test suite validates <strong>' + ucListRaw.length + ' functional areas</strong>, ';
+        sentences.push(
+            overviewIntro
+            + (subject ? '<strong>' + total + ' test scenario' + (total !== 1 ? 's' : '') + '</strong>'
+                       + ' spanning <strong>' + ucListRaw.length + ' functional area' + (ucListRaw.length !== 1 ? 's' : '') + '</strong>'
+                : '<strong>' + total + ' test scenario' + (total !== 1 ? 's' : '') + '</strong>')
+            + ': ' + areaJoined + (ucListRaw.length > 4 ? ', and ' + (ucListRaw.length - 4) + ' more.' : '.')
+        );
+    } else if (ucListRaw.length > 0) {
+        var areaNames = ucListRaw
+            .map(function (u) { return '<strong>' + escSum(capFirst(u)) + '</strong>'; }).join(' and ');
+        var sfx = subject
+            ? 'The <strong>' + escSum(capFirst(subject)) + '</strong> feature is validated across '
+              + '<strong>' + total + ' test scenario' + (total !== 1 ? 's' : '') + '</strong>'
+              + ' in the ' + areaNames + ' functional area' + (ucListRaw.length > 1 ? 's' : '') + '.'
+            : 'This test suite validates the ' + areaNames + ' area'
+              + (ucListRaw.length > 1 ? 's' : '') + ' across '
+              + '<strong>' + total + ' scenario' + (total !== 1 ? 's' : '') + '</strong>.';
+        sentences.push(sfx);
+    } else {
+        var baseSubject = subject || 'the tested system';
+        sentences.push(
+            'The <strong>' + escSum(capFirst(baseSubject)) + '</strong> is validated across '
+            + '<strong>' + total + ' test scenario' + (total !== 1 ? 's' : '') + '</strong>.'
+        );
+    }
+
+    /* ── 2. Feature flow (ordered functional areas) ─────────────────────── */
+    if (ucListRaw.length >= 2) {
+        var ordered    = detectFlowOrder(ucListRaw, ucGroups, cols);
+        var flowLabels = ordered.slice(0, 5)
+            .map(function (u) { return '<strong>' + escSum(capFirst(u)) + '</strong>'; });
+        if (flowLabels.length === 2) {
+            sentences.push(
+                'The primary feature flow begins with ' + flowLabels[0]
+                + ' and progresses to ' + flowLabels[1] + '.'
+            );
+        } else if (flowLabels.length === 3) {
+            sentences.push(
+                'The primary feature flow moves through ' + flowLabels[0]
+                + ', ' + flowLabels[1] + ', and then ' + flowLabels[2] + '.'
+            );
+        } else if (flowLabels.length >= 4) {
+            sentences.push(
+                'The feature follows a flow from ' + flowLabels[0]
+                + ' → ' + flowLabels[1]
+                + ' → ' + flowLabels[2]
+                + ' → ' + flowLabels[3]
+                + (flowLabels.length > 4 ? ' and beyond.' : '.')
+            );
+        }
+    } else if (builtIn.capabilities && builtIn.capabilities.length > 1) {
+        var themeLabels = builtIn.capabilities.slice(0, 3).map(function (c) {
+            return '<strong>' + escSum(typeof c === 'object' ? c.label : c) + '</strong>';
+        });
+        sentences.push('Key functional areas exercised: ' + themeLabels.join(', ') + '.');
+    }
+
+    /* ── 3. Capability descriptions (one sentence per top area) ─────────── */
+    if (builtIn.capabilities && builtIn.capabilities.length > 0) {
+        var withDesc = builtIn.capabilities
+            .filter(function (c) { return typeof c === 'object' && c.description; })
+            .slice(0, 3);
+        if (withDesc.length > 0) {
+            withDesc.forEach(function (c) {
+                sentences.push('<strong>' + escSum(c.label) + ':</strong> ' + escSum(c.description));
+            });
+        } else {
+            /* Fallback: list top capability labels as a single sentence */
+            var capLabels = builtIn.capabilities.slice(0, 4)
+                .map(function (c) { return '<strong>' + escSum(typeof c === 'object' ? c.label : c) + '</strong>'; });
+            if (capLabels.length > 0) {
+                sentences.push('Capabilities under test include: ' + capLabels.join(', ') + '.');
+            }
+        }
+    }
+
+    /* ── 4. Cross-module dependencies ───────────────────────────────────── */
+    if (ucListRaw.length >= 2) {
+        var deps = detectCrossModuleDeps(ucListRaw, ucGroups, cols);
+        if (deps.length > 0) {
+            var depMap = {};
+            deps.forEach(function (d) {
+                if (!depMap[d.from]) depMap[d.from] = [];
+                depMap[d.from].push(d.to);
+            });
+            var depPhrases = Object.keys(depMap).slice(0, 2).map(function (from) {
+                var tos = depMap[from].slice(0, 2)
+                    .map(function (to) { return '<strong>' + escSum(capFirst(to)) + '</strong>'; });
+                return '<strong>' + escSum(capFirst(from)) + '</strong> references '
+                    + (tos.length > 1 ? tos.slice(0, -1).join(', ') + ' and ' + tos[tos.length - 1] : tos[0]);
+            });
+            sentences.push('Cross-module touchpoints: ' + depPhrases.join('; ') + '.');
+        }
+    }
+
+    /* ── 5. Coverage breadth & gaps ─────────────────────────────────────── */
+    if (quality) {
+        var covTypes = [];
+        var gaps     = [];
+        quality.insights.forEach(function (ins) {
+            if (ins.charAt(0) === '✅') {
+                var type = ins.slice(2).replace(/\s*(detected|scenarios)\s*$/i, '').trim();
+                if (type) covTypes.push(type.toLowerCase());
+            } else {
+                var m = ins.match(/No\s+(.+?)\s+(?:tests?\s+)?found/i);
+                if (m) gaps.push(m[1].toLowerCase());
+            }
+        });
+        if (covTypes.length > 0) {
+            sentences.push('Coverage spans: ' + covTypes.slice(0, 5).join(', ') + '.');
+        }
+        if (gaps.length > 0) {
+            sentences.push(
+                'Notable coverage gaps: <strong>' + gaps.slice(0, 3).map(escSum).join('</strong>, <strong>')
+                + '</strong> — recommended for future test planning.'
+            );
+        }
+    }
+
+    /* ── Render ──────────────────────────────────────────────────────────── */
+    var html = '<div class="sum-narrative-block" style="'
+        + 'background:var(--card-bg,#f8f9fa);'
+        + 'border-left:4px solid var(--accent,#1a73e8);'
+        + 'border-radius:0 8px 8px 0;'
+        + 'padding:14px 18px;margin-bottom:16px;line-height:1.8">';
+    html += '<div style="font-weight:700;font-size:.78rem;letter-spacing:.07em;'
+        + 'text-transform:uppercase;color:var(--accent,#1a73e8);margin-bottom:10px">'
+        + '📝 Feature Overview</div>';
+    sentences.forEach(function (s) {
+        html += '<p style="margin:0 0 6px 0;font-size:.9rem;color:var(--text,#222)">' + s + '</p>';
+    });
+    html += '</div>';
+    return html;
+}
+
+/* ─────────────────────────────────────────────
    Built-in summarisation engine
    Produces a brief user-story narrative (≤ 15 lines, < 2 min read).
    No category headers — just an intro sentence and a short
@@ -885,6 +1202,9 @@ var SUM_MIN_KEYWORD_FREQ = 2;
 /** Max characters taken from steps/expectedResult when testCase is a bare ID. */
 var SUM_MAX_FALLBACK_TEXT = 200;
 
+/** Max characters scanned from expectedResult text when detecting cross-module deps. */
+var SUM_DEP_MAX_EXP_TEXT = 100;
+
 /** Regex that identifies a bare test-case ID (e.g. "TC001", "R-42", "1") vs a real title. */
 var SUM_ID_PATTERN = /^[A-Za-z]{0,5}[-_]?\d+$/;
 
@@ -1082,7 +1402,7 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
             var modelLabel  = 'Auto Analysis';
             var builtIn     = builtInSummarise(parsedRows, cols, stats);
             var quality     = analyzeTestQuality(parsedRows, cols);
-            var summaryHtml = buildBuiltInSummaryHtml(builtIn, quality);
+            var summaryHtml = buildBuiltInSummaryHtml(builtIn, quality, parsedRows, cols, stats);
 
             renderSumStats(stats, cols);
             renderSumSummary(summaryHtml, modelLabel);
@@ -1156,7 +1476,7 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
     }
 
     /* ── Build HTML for built-in summary result ── */
-    function buildBuiltInSummaryHtml(builtIn, quality) {
+    function buildBuiltInSummaryHtml(builtIn, quality, rows, cols, stats) {
         var html = '';
 
         /* Quality badge */
@@ -1169,7 +1489,12 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
             html += '<div style="' + badgeStyle + '">📊 ' + escSum(quality.qualityLabel) + '</div>';
         }
 
-        html += '<p class="sum-narrative-intro">' + builtIn.intro + '</p>';
+        /* 5–10 line Feature Overview narrative (replaces the single intro sentence) */
+        if (rows && cols && stats) {
+            html += buildNarrativeSummary(rows, cols, stats, builtIn, quality);
+        } else {
+            html += '<p class="sum-narrative-intro">' + builtIn.intro + '</p>';
+        }
 
         if (builtIn.capabilities && builtIn.capabilities.length > 0) {
             var caps = builtIn.capabilities;
