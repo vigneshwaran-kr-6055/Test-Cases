@@ -701,12 +701,16 @@ function detectCrossModuleDeps(ucList, ucGroups, cols) {
 }
 
 /**
- * Build a concise 5–10 line plain-language HTML narrative of the entire test
- * suite so that any stakeholder can read it and immediately understand:
- *   (1) what the feature / product does,
- *   (2) the primary user flow through the functional areas,
- *   (3) cross-module touchpoints and dependencies,
- *   (4) coverage breadth and notable gaps.
+ * Build a single brief plain-language sentence summarising the test suite so
+ * any stakeholder can immediately understand what is being tested.
+ *
+ * The sentence identifies the application / feature name (from scenario titles
+ * or use-case labels), the primary flow under test, and the types of test
+ * coverage present (positive, negative, security, etc.).
+ *
+ * Example output:
+ *   "This test case document explains the login flow for the Backup feature
+ *    with positive and negative cases."
  *
  * @param {Object[]} rows    - All parsed test-case rows.
  * @param {Object}   cols    - Detected column map.
@@ -719,175 +723,136 @@ function buildNarrativeSummary(rows, cols, stats, builtIn, quality) {
     var ucListRaw = stats.useCases.filter(function (uc) {
         return uc && uc !== '(No Use Case)' && !SUM_GENERIC_UC_TERMS.has(uc.trim().toLowerCase());
     });
-    var total    = rows.length;
-    var ucGroups = groupByUseCase(rows, cols);
-    var sentences = []; /* 5–10 items, each rendered as one <p> line */
 
-    /* ── 1. Feature overview ─────────────────────────────────────────────── */
+    /* Collect real scenario titles (non-ID rows) */
     var allScenarios = [];
     rows.forEach(function (r) {
         var name = (cols.testCase ? String(r[cols.testCase] || '') : '').trim();
         if (name && !SUM_ID_PATTERN.test(name)) allScenarios.push(name);
     });
 
-    /* For single-area suites use keyword detection from scenario titles.
-     * For multi-area suites (≥3 named areas) the product-level subject is best
-     * derived from the use-case labels themselves — avoids surfacing a noun
-     * that belongs only to one module (e.g. "Password" for a Login/Upload suite). */
-    var subject;
-    if (ucListRaw.length >= 3) {
-        /* Derive an application-level subject from the set of use-case names */
-        var ucText = extractTopKeywords(ucListRaw, 2);
-        subject = ucText.length ? ucText.join(' ') : null;
-    } else {
-        subject = detectSumSubject(allScenarios);
-        if (!subject && ucListRaw.length > 0) subject = ucListRaw[0];
-        if (!subject) {
-            var kws = extractTopKeywords(allScenarios.length ? allScenarios : [stats.useCases.join(' ')], 1);
-            subject = kws.length ? kws[0] : null;
+    /* ── 1. Detect the feature / application name ── */
+    /* Prefer the explicit use-case / feature-area name when available — it is
+     * the most reliable signal (set by the test-suite author).  Fall back to
+     * keyword detection from scenario titles only when no named areas exist. */
+    var appName = null;
+    if (ucListRaw.length === 1) {
+        appName = capFirst(ucListRaw[0]);
+    } else if (ucListRaw.length > 1) {
+        var ucKws = extractTopKeywords(ucListRaw, 1);
+        appName = ucKws.length ? ucKws[0] : capFirst(ucListRaw[0]);
+    }
+    if (!appName) {
+        appName = detectSumSubject(allScenarios);
+    }
+    if (!appName && allScenarios.length > 0) {
+        var fallbackKws = extractTopKeywords(allScenarios, 1);
+        appName = fallbackKws.length ? fallbackKws[0] : null;
+    }
+
+    /* ── 2. Detect the primary flow being tested ── */
+    /* Check use-case labels first (e.g. "Backup Retention" → backup), then
+     * fall through to scenario text for suites with no named use-case column. */
+    var ucText     = ucListRaw.join(' ').toLowerCase();
+    var allText    = allScenarios.concat(ucListRaw).join(' ').toLowerCase();
+    var flowType   = null;
+    var flowSource = ucText || allText; /* prefer ucText when available */
+
+    if (/\b(backup|restore)\b/.test(flowSource)) {
+        flowType = 'backup and restore';
+    } else if (/\b(login|log[\s-]?in|sign[\s-]?in|auth)\b/.test(flowSource)) {
+        flowType = 'login';
+    } else if (/\b(upload|import|export|file|attachment)\b/.test(flowSource)) {
+        flowType = 'file management';
+    } else if (/\b(setting|config|preference|profile)\b/.test(flowSource)) {
+        flowType = 'settings and configuration';
+    } else if (/\b(search|filter|sort)\b/.test(flowSource)) {
+        flowType = 'search and filtering';
+    } else if (/\b(dashboard|home|overview)\b/.test(flowSource)) {
+        flowType = 'dashboard';
+    } else if (/\b(creat|add|register|new)\b/.test(flowSource)) {
+        flowType = 'creation';
+    } else if (/\b(edit|updat|modif)\b/.test(flowSource)) {
+        flowType = 'editing';
+    } else if (/\b(delet|remov|archiv)\b/.test(flowSource)) {
+        flowType = 'deletion';
+    }
+    /* Second pass on full allText if ucText gave no match */
+    if (!flowType && ucText) {
+        if (/\b(login|log[\s-]?in|sign[\s-]?in|auth|session|password|credential|onboard)\b/.test(allText)) {
+            flowType = 'login';
+        } else if (/\b(upload|import|export|file|attachment)\b/.test(allText)) {
+            flowType = 'file management';
+        } else if (/\b(setting|config|preference|profile)\b/.test(allText)) {
+            flowType = 'settings and configuration';
+        } else if (/\b(search|filter|sort)\b/.test(allText)) {
+            flowType = 'search and filtering';
+        } else if (/\b(creat|add|register|new)\b/.test(allText)) {
+            flowType = 'creation';
+        } else if (/\b(edit|updat|modif)\b/.test(allText)) {
+            flowType = 'editing';
+        } else if (/\b(delet|remov|archiv)\b/.test(allText)) {
+            flowType = 'deletion';
         }
     }
 
-    if (ucListRaw.length >= 3) {
-        var topAreas = ucListRaw.slice(0, 4)
-            .map(function (u) { return '<strong>' + escSum(capFirst(u)) + '</strong>'; });
-        var areaJoined = topAreas.length === 1
-            ? topAreas[0]
-            : topAreas.slice(0, -1).join(', ') + ' and ' + topAreas[topAreas.length - 1];
-        var overviewIntro = subject
-            ? 'The <strong>' + escSum(capFirst(subject)) + '</strong> system is validated across '
-            : 'This test suite validates <strong>' + ucListRaw.length + ' functional areas</strong>, ';
-        sentences.push(
-            overviewIntro
-            + (subject ? '<strong>' + total + ' test scenario' + (total !== 1 ? 's' : '') + '</strong>'
-                       + ' spanning <strong>' + ucListRaw.length + ' functional area' + (ucListRaw.length !== 1 ? 's' : '') + '</strong>'
-                : '<strong>' + total + ' test scenario' + (total !== 1 ? 's' : '') + '</strong>')
-            + ': ' + areaJoined + (ucListRaw.length > 4 ? ', and ' + (ucListRaw.length - 4) + ' more.' : '.')
-        );
-    } else if (ucListRaw.length > 0) {
-        var areaNames = ucListRaw
-            .map(function (u) { return '<strong>' + escSum(capFirst(u)) + '</strong>'; }).join(' and ');
-        var sfx = subject
-            ? 'The <strong>' + escSum(capFirst(subject)) + '</strong> feature is validated across '
-              + '<strong>' + total + ' test scenario' + (total !== 1 ? 's' : '') + '</strong>'
-              + ' in the ' + areaNames + ' functional area' + (ucListRaw.length > 1 ? 's' : '') + '.'
-            : 'This test suite validates the ' + areaNames + ' area'
-              + (ucListRaw.length > 1 ? 's' : '') + ' across '
-              + '<strong>' + total + ' scenario' + (total !== 1 ? 's' : '') + '</strong>.';
-        sentences.push(sfx);
-    } else {
-        var baseSubject = subject || 'the tested system';
-        sentences.push(
-            'The <strong>' + escSum(capFirst(baseSubject)) + '</strong> is validated across '
-            + '<strong>' + total + ' test scenario' + (total !== 1 ? 's' : '') + '</strong>.'
-        );
-    }
-
-    /* ── 2. Feature flow (ordered functional areas) ─────────────────────── */
-    if (ucListRaw.length >= 2) {
-        var ordered    = detectFlowOrder(ucListRaw, ucGroups, cols);
-        var flowLabels = ordered.slice(0, 5)
-            .map(function (u) { return '<strong>' + escSum(capFirst(u)) + '</strong>'; });
-        if (flowLabels.length === 2) {
-            sentences.push(
-                'The primary feature flow begins with ' + flowLabels[0]
-                + ' and progresses to ' + flowLabels[1] + '.'
-            );
-        } else if (flowLabels.length === 3) {
-            sentences.push(
-                'The primary feature flow moves through ' + flowLabels[0]
-                + ', ' + flowLabels[1] + ', and then ' + flowLabels[2] + '.'
-            );
-        } else if (flowLabels.length >= 4) {
-            sentences.push(
-                'The feature follows a flow from ' + flowLabels[0]
-                + ' → ' + flowLabels[1]
-                + ' → ' + flowLabels[2]
-                + ' → ' + flowLabels[3]
-                + (flowLabels.length > 4 ? ' and beyond.' : '.')
-            );
-        }
-    } else if (builtIn.capabilities && builtIn.capabilities.length > 1) {
-        var themeLabels = builtIn.capabilities.slice(0, 3).map(function (c) {
-            return '<strong>' + escSum(typeof c === 'object' ? c.label : c) + '</strong>';
-        });
-        sentences.push('Key functional areas exercised: ' + themeLabels.join(', ') + '.');
-    }
-
-    /* ── 3. Capability descriptions (one sentence per top area) ─────────── */
-    if (builtIn.capabilities && builtIn.capabilities.length > 0) {
-        var withDesc = builtIn.capabilities
-            .filter(function (c) { return typeof c === 'object' && c.description; })
-            .slice(0, 3);
-        if (withDesc.length > 0) {
-            withDesc.forEach(function (c) {
-                sentences.push('<strong>' + escSum(c.label) + ':</strong> ' + escSum(c.description));
-            });
-        } else {
-            /* Fallback: list top capability labels as a single sentence */
-            var capLabels = builtIn.capabilities.slice(0, 4)
-                .map(function (c) { return '<strong>' + escSum(typeof c === 'object' ? c.label : c) + '</strong>'; });
-            if (capLabels.length > 0) {
-                sentences.push('Capabilities under test include: ' + capLabels.join(', ') + '.');
-            }
-        }
-    }
-
-    /* ── 4. Cross-module dependencies ───────────────────────────────────── */
-    if (ucListRaw.length >= 2) {
-        var deps = detectCrossModuleDeps(ucListRaw, ucGroups, cols);
-        if (deps.length > 0) {
-            var depMap = {};
-            deps.forEach(function (d) {
-                if (!depMap[d.from]) depMap[d.from] = [];
-                depMap[d.from].push(d.to);
-            });
-            var depPhrases = Object.keys(depMap).slice(0, 2).map(function (from) {
-                var tos = depMap[from].slice(0, 2)
-                    .map(function (to) { return '<strong>' + escSum(capFirst(to)) + '</strong>'; });
-                return '<strong>' + escSum(capFirst(from)) + '</strong> references '
-                    + (tos.length > 1 ? tos.slice(0, -1).join(', ') + ' and ' + tos[tos.length - 1] : tos[0]);
-            });
-            sentences.push('Cross-module touchpoints: ' + depPhrases.join('; ') + '.');
-        }
-    }
-
-    /* ── 5. Coverage breadth & gaps ─────────────────────────────────────── */
+    /* ── 3. Detect test coverage types present ── */
+    var covTypes = [];
+    var covLabelMap = {
+        'positive':     'positive',
+        'happy':        'positive',
+        'negative':     'negative',
+        'error-path':   'negative',
+        'boundary':     'boundary value',
+        'edge':         'boundary value',
+        'security':     'security',
+        'performance':  'performance',
+        'state':        'state transition',
+        'workflow':     'state transition',
+        'accessibility':'accessibility',
+        'data':         'data integrity',
+        'ui':           'UI',
+    };
     if (quality) {
-        var covTypes = [];
-        var gaps     = [];
         quality.insights.forEach(function (ins) {
             if (ins.charAt(0) === '✅') {
-                var type = ins.slice(2).replace(/\s*(detected|scenarios)\s*$/i, '').trim();
-                if (type) covTypes.push(type.toLowerCase());
-            } else {
-                var m = ins.match(/No\s+(.+?)\s+(?:tests?\s+)?found/i);
-                if (m) gaps.push(m[1].toLowerCase());
+                var raw = ins.slice(2).toLowerCase();
+                var matched = null;
+                Object.keys(covLabelMap).forEach(function (key) {
+                    if (!matched && raw.indexOf(key) !== -1) matched = covLabelMap[key];
+                });
+                var label = matched || ins.slice(2).replace(/\s*(detected|scenarios)\s*$/i, '').trim().toLowerCase();
+                if (label && covTypes.indexOf(label) === -1) covTypes.push(label);
             }
         });
-        if (covTypes.length > 0) {
-            sentences.push('Coverage spans: ' + covTypes.slice(0, 5).join(', ') + '.');
-        }
-        if (gaps.length > 0) {
-            sentences.push(
-                'Notable coverage gaps: <strong>' + gaps.slice(0, 3).map(escSum).join('</strong>, <strong>')
-                + '</strong> — recommended for future test planning.'
-            );
-        }
     }
 
-    /* ── Render ──────────────────────────────────────────────────────────── */
+    /* ── 4. Build single brief sentence ── */
+    var appPart = appName
+        ? 'the <strong>' + escSum(appName) + '</strong> feature'
+        : 'this application';
+    var sentence;
+    if (flowType) {
+        sentence = 'This test case document explains the ' + flowType + ' flow for ' + appPart;
+    } else {
+        sentence = 'This test case document covers test cases for ' + appPart;
+    }
+    if (covTypes.length > 0) {
+        var sliced = covTypes.slice(0, 3);
+        var covStr = sliced.length === 1
+            ? sliced[0]
+            : sliced.slice(0, -1).join(', ') + ' and ' + sliced[sliced.length - 1];
+        sentence += ' with ' + covStr + ' cases.';
+    } else {
+        sentence += '.';
+    }
+
     var html = '<div class="sum-narrative-block" style="'
         + 'background:var(--card-bg,#f8f9fa);'
         + 'border-left:4px solid var(--accent,#1a73e8);'
         + 'border-radius:0 8px 8px 0;'
         + 'padding:14px 18px;margin-bottom:16px;line-height:1.8">';
-    html += '<div style="font-weight:700;font-size:.78rem;letter-spacing:.07em;'
-        + 'text-transform:uppercase;color:var(--accent,#1a73e8);margin-bottom:10px">'
-        + '📝 Feature Overview</div>';
-    sentences.forEach(function (s) {
-        html += '<p style="margin:0 0 6px 0;font-size:.9rem;color:var(--text,#222)">' + s + '</p>';
-    });
+    html += '<p style="margin:0;font-size:.93rem;color:var(--text,#222)">' + sentence + '</p>';
     html += '</div>';
     return html;
 }
@@ -1489,87 +1454,11 @@ function saveToSumHistory(fileName, modelLabel, stats, summaryHtml, useCaseBreak
             html += '<div style="' + badgeStyle + '">📊 ' + escSum(quality.qualityLabel) + '</div>';
         }
 
-        /* 5–10 line Feature Overview narrative (replaces the single intro sentence) */
+        /* Brief one-sentence narrative summary */
         if (rows && cols && stats) {
             html += buildNarrativeSummary(rows, cols, stats, builtIn, quality);
         } else {
             html += '<p class="sum-narrative-intro">' + builtIn.intro + '</p>';
-        }
-
-        if (builtIn.capabilities && builtIn.capabilities.length > 0) {
-            var caps = builtIn.capabilities;
-            var primaryCaps  = caps.slice(0, SUM_MAX_CAPABILITIES);
-            var overflowCaps = caps.slice(SUM_MAX_CAPABILITIES);
-
-            /* Render a single capability item as a feature block with narrative description + scenario list */
-            function renderCapBlock(cap) {
-                /* Support both legacy string format and new object format */
-                var label       = (typeof cap === 'object') ? cap.label       : cap;
-                var description = (typeof cap === 'object') ? (cap.description || '') : '';
-                var scenarios   = (typeof cap === 'object') ? (cap.scenarios   || []) : [];
-
-                var block = '<div class="sum-feature-block">';
-                block += '<div class="sum-feature-name"><strong>' + escSum(label) + '</strong></div>';
-
-                /* Narrative description — shown below the heading in muted text */
-                if (description) {
-                    block += '<p class="sum-feature-description" style="margin:4px 0 6px;font-size:.88rem;'
-                           + 'color:var(--text-muted,#555);line-height:1.55">'
-                           + escSum(description) + '</p>';
-                }
-
-                if (scenarios && scenarios.length > 0) {
-                    block += '<ul class="sum-scenario-list">';
-                    scenarios.forEach(function (sc) {
-                        block += '<li>' + escSum(sc) + '</li>';
-                    });
-                    block += '</ul>';
-                }
-
-                block += '</div>';
-                return block;
-            }
-
-            primaryCaps.forEach(function (cap) {
-                html += renderCapBlock(cap);
-            });
-
-            /* When there are more areas than the fold limit, show them in a
-             * collapsible block so the user can always see everything without
-             * the UI being cluttered on first glance. */
-            if (overflowCaps.length > 0) {
-                html += '<details class="sum-overflow-areas" style="margin-top:4px;padding:10px 14px;'
-                    + 'border:1px solid var(--border,#e0e0e0);border-radius:8px;background:var(--card-bg,#fafafa)">';
-                html += '<summary style="cursor:pointer;font-weight:600;font-size:.88rem;'
-                    + 'color:var(--accent,#1a73e8);list-style:none;outline:none">'
-                    + '📂 Show all ' + caps.length + ' feature areas'
-                    + ' <span style="font-weight:400;font-size:.8rem;opacity:.7">(click to expand)</span>'
-                    + '</summary>';
-                html += '<div style="margin-top:8px">';
-                overflowCaps.forEach(function (cap) {
-                    html += renderCapBlock(cap);
-                });
-                html += '</div>';
-                html += '</details>';
-            }
-        }
-
-        /* Coverage quality insights (collapsible) */
-        if (quality && quality.insights && quality.insights.length > 0) {
-            html += '<details class="sum-coverage-details" style="margin-top:16px;padding:12px 14px;'
-                + 'border:1px solid var(--border,#e0e0e0);border-radius:8px;background:var(--card-bg,#fafafa)">';
-            html += '<summary style="cursor:pointer;font-weight:600;font-size:.9rem;'
-                + 'color:var(--accent,#1a73e8);list-style:none;outline:none">'
-                + '📋 Coverage Quality Insights'
-                + ' <span style="font-weight:400;font-size:.8rem;opacity:.7">'
-                + '(click to expand)</span>'
-                + '</summary>';
-            html += '<ul style="margin:10px 0 0 0;padding-left:20px;line-height:1.7">';
-            quality.insights.forEach(function (insight) {
-                html += '<li style="font-size:.88rem">' + escSum(insight) + '</li>';
-            });
-            html += '</ul>';
-            html += '</details>';
         }
 
         return html;
