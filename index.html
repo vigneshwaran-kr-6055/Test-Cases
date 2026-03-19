@@ -53,14 +53,8 @@
         <div class="upload-card">
             <h2>Generate Test Cases from Use Cases</h2>
             <p>Upload a <strong>.txt</strong>, <strong>.csv</strong>, <strong>.xlsx</strong>,
-               <strong>.docx</strong>, or <strong>.pdf</strong> file
-               containing your use cases or user stories. The tool reads each use case and
-               automatically generates structured test cases following industry-standard practices,
-               tagged with <em>severity</em> (showstopper, critical, major, minor) and
-               <em>type</em> (functional, non-functional, UI, privacy, security). Generated scenarios cover
-               happy-path, negative/invalid input, boundary values, UI checks, security, privacy,
-               equivalence partitioning, state transitions, data integrity, cross-browser compatibility,
-               and integration testing.</p>
+               <strong>.docx</strong>, or <strong>.pdf</strong> file containing your use cases or user stories,
+               and the tool automatically generates structured test cases for each one.</p>
 
             <div class="drop-zone" id="gen-drop-zone">
                 <input type="file"
@@ -168,7 +162,7 @@
         <!-- Upload + Model Selection Card -->
         <div class="upload-card">
             <h2>Summarise Your Test Cases with AI</h2>
-            <p>Upload a test case spreadsheet (<strong>.xlsx</strong> or <strong>.csv</strong>) and the summary is generated automatically — a plain-language feature narrative describing <em>what the product does</em> and <em>how each feature behaves</em>, so any stakeholder can understand the test suite at a glance. Coverage quality is assessed against <strong>ISTQB</strong>, <strong>IEEE 829</strong>, and <strong>OWASP</strong> standards to highlight gaps and strengths.</p>
+            <p>Upload a test case spreadsheet (<strong>.xlsx</strong> or <strong>.csv</strong>) and the summary is generated automatically — a plain-language feature narrative describing <em>what the product does</em> and <em>how each feature behaves</em>, so any stakeholder can understand the test suite at a glance.</p>
 
             <div class="drop-zone" id="sum-drop-zone">
                 <input type="file" id="sum-file-input" accept=".xlsx,.csv" aria-label="Upload test case file">
