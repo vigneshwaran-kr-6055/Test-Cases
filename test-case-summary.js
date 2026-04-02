@@ -1050,50 +1050,81 @@ function buildAIPrompt(rows, cols, stats) {
 /* ─────────────────────────────────────────────
    AI API callers
 ───────────────────────────────────────────── */
-async function callOpenAI(apiKey, prompt) {
-    var response = await fetch('https://api.openai.com/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': 'Bearer ' + apiKey,
-        },
-        body: JSON.stringify({
-            model: 'gpt-4o',
-            messages: [{ role: 'user', content: prompt }],
-            max_tokens: AI_MAX_RESPONSE_TOKENS,
-            temperature: AI_TEMPERATURE,
-        }),
-    });
+/** Maximum retry attempts and base delay (ms) for rate-limit (HTTP 429) responses. */
+var AI_MAX_RETRIES = 3;
+var AI_RETRY_BASE_DELAY_MS = 2000;
 
-    if (!response.ok) {
-        var errData = await response.json().catch(function () { return {}; });
-        throw new Error(errData.error && errData.error.message
-            ? errData.error.message
-            : 'OpenAI API returned status ' + response.status);
+/** Wait for `ms` milliseconds. */
+function aiDelay(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+
+async function callOpenAI(apiKey, prompt) {
+    var lastError;
+    for (var attempt = 0; attempt <= AI_MAX_RETRIES; attempt++) {
+        var response = await fetch('https://api.openai.com/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': 'Bearer ' + apiKey,
+            },
+            body: JSON.stringify({
+                model: 'gpt-4o',
+                messages: [{ role: 'user', content: prompt }],
+                max_tokens: AI_MAX_RESPONSE_TOKENS,
+                temperature: AI_TEMPERATURE,
+            }),
+        });
+
+        if (response.status === 429 && attempt < AI_MAX_RETRIES) {
+            var retryAfter = parseInt(response.headers.get('Retry-After') || '0', 10);
+            var delay = retryAfter > 0 ? retryAfter * 1000 : AI_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+            await aiDelay(delay);
+            continue;
+        }
+
+        if (!response.ok) {
+            var errData = await response.json().catch(function () { return {}; });
+            lastError = new Error(errData.error && errData.error.message
+                ? errData.error.message
+                : 'OpenAI API returned status ' + response.status);
+            break;
+        }
+        var data = await response.json();
+        return data.choices[0].message.content.trim();
     }
-    var data = await response.json();
-    return data.choices[0].message.content.trim();
+    throw lastError || new Error('OpenAI API rate limit exceeded after ' + AI_MAX_RETRIES + ' retries');
 }
 
 async function callGemini(apiKey, prompt) {
-    var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=' + encodeURIComponent(apiKey);
-    var response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: AI_TEMPERATURE, maxOutputTokens: AI_MAX_RESPONSE_TOKENS },
-        }),
-    });
+    var lastError;
+    for (var attempt = 0; attempt <= AI_MAX_RETRIES; attempt++) {
+        var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent?key=' + encodeURIComponent(apiKey);
+        var response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }],
+                generationConfig: { temperature: AI_TEMPERATURE, maxOutputTokens: AI_MAX_RESPONSE_TOKENS },
+            }),
+        });
 
-    if (!response.ok) {
-        var errData = await response.json().catch(function () { return {}; });
-        throw new Error(errData.error && errData.error.message
-            ? errData.error.message
-            : 'Gemini API returned status ' + response.status);
+        if (response.status === 429 && attempt < AI_MAX_RETRIES) {
+            var retryAfter = parseInt(response.headers.get('Retry-After') || '0', 10);
+            var delay = retryAfter > 0 ? retryAfter * 1000 : AI_RETRY_BASE_DELAY_MS * Math.pow(2, attempt);
+            await aiDelay(delay);
+            continue;
+        }
+
+        if (!response.ok) {
+            var errData = await response.json().catch(function () { return {}; });
+            lastError = new Error(errData.error && errData.error.message
+                ? errData.error.message
+                : 'Gemini API returned status ' + response.status);
+            break;
+        }
+        var data = await response.json();
+        return data.candidates[0].content.parts[0].text.trim();
     }
-    var data = await response.json();
-    return data.candidates[0].content.parts[0].text.trim();
+    throw lastError || new Error('Gemini API rate limit exceeded after ' + AI_MAX_RETRIES + ' retries');
 }
 
 /* ─────────────────────────────────────────────
@@ -1137,11 +1168,11 @@ function aiTextToHtml(text) {
 /* ─────────────────────────────────────────────
    Constants
 ───────────────────────────────────────────── */
-/** Maximum number of test case rows sent to AI APIs (keeps prompt within typical token limits). */
-var AI_MAX_SAMPLE_ROWS = 80;
+/** Maximum number of test case rows sent to AI APIs (GPT-4o has a 128K context window; 200 rows is well within limits). */
+var AI_MAX_SAMPLE_ROWS = 200;
 
-/** Max tokens requested from AI models — long enough for a detailed summary, short enough to be cost-effective. */
-var AI_MAX_RESPONSE_TOKENS = 1500;
+/** Max tokens requested from AI models — set to the GPT-4o output maximum (4096) so responses are never truncated. */
+var AI_MAX_RESPONSE_TOKENS = 4096;
 
 /** Low temperature for factual, consistent summaries (not creative writing). */
 var AI_TEMPERATURE = 0.3;
