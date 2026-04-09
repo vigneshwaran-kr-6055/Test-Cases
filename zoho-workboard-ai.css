@@ -1,0 +1,430 @@
+/* ==========================================================
+   Zoho Workboard AI Tab – Styles
+   ========================================================== */
+
+/* ── Layout wrap ── */
+.zwa-wrap {
+  max-width: 1100px;
+  margin: 32px auto;
+  padding: 0 24px 60px;
+  width: 100%;
+}
+
+/* ── Intro card ── */
+.zwa-intro-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  padding: 32px 36px;
+  display: flex;
+  gap: 28px;
+  align-items: flex-start;
+  margin-bottom: 28px;
+}
+.zwa-intro-icon-block {
+  flex-shrink: 0;
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.zwa-intro-icon-block svg { width: 40px; height: 40px; }
+.zwa-intro-content h2 {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 8px;
+}
+.zwa-intro-content p {
+  color: var(--text-secondary);
+  font-size: 0.93rem;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+.zwa-intro-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.zwa-intro-tag {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 20px;
+  background: var(--chip-bg);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+/* ── Tab bar ── */
+.zwa-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 2px solid var(--border);
+  margin-bottom: 24px;
+}
+.zwa-tab-btn {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  padding: 11px 20px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.zwa-tab-btn:hover { color: var(--accent); }
+.zwa-tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+/* ── Two-column layout for demo tab ── */
+.zwa-demo-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+/* Blueprint flow sidebar */
+.zwa-flow-sidebar {
+  background: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  padding: 20px 16px;
+}
+.zwa-flow-sidebar h3 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 16px;
+}
+.zwa-flow {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0;
+}
+.zwa-flow-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 5px 6px;
+  border-radius: 8px;
+  transition: background 0.12s;
+  width: 100%;
+}
+.zwa-flow-step:hover { background: var(--chip-bg); }
+.zwa-flow-step-active { background: var(--chip-bg); }
+.zwa-flow-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid #ccc;
+  flex-shrink: 0;
+  transition: background 0.15s, border-color 0.15s;
+}
+.zwa-flow-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  line-height: 1.3;
+}
+.zwa-flow-step-active .zwa-flow-label { font-weight: 700; }
+.zwa-flow-arrow {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding: 1px 0 1px 8px;
+}
+
+/* Stage selector */
+.zwa-stage-selector-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+.zwa-stage-selector-row label {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.zwa-stage-select {
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 7px 12px;
+  font-size: 0.88rem;
+  color: var(--text);
+  background: var(--card-bg);
+  cursor: pointer;
+  outline: none;
+  flex: 1;
+  min-width: 160px;
+}
+.zwa-stage-select:focus { border-color: var(--accent); }
+
+/* Demo widget card */
+.zwa-demo-main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.zwa-widget-preview {
+  background: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  overflow: hidden;
+}
+.zwa-widget-header {
+  background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.zwa-widget-header-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #fff;
+}
+.zwa-widget-header svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+.zwa-widget-stage-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  background: var(--chip-bg);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+.zwa-widget-stage-bar span:first-child {
+  color: var(--text-muted);
+  font-weight: 500;
+  white-space: nowrap;
+}
+.zwa-demo-stage-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid;
+  border-radius: 20px;
+  padding: 2px 10px;
+}
+
+/* Panel sections inside demo widget */
+.zwa-widget-body {
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.zwa-widget-section-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.zwa-guidance-box {
+  background: var(--chip-bg);
+  border-left: 3px solid var(--accent);
+  border-radius: 0 8px 8px 0;
+  padding: 10px 14px;
+  font-size: 0.85rem;
+  line-height: 1.6;
+  color: var(--text);
+}
+
+/* Fields list */
+.zwa-field-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--row-border);
+}
+.zwa-field-row:last-child { border-bottom: none; }
+.zwa-field-required-dot { color: #c62828; font-size: 0.7rem; margin-top: 3px; flex-shrink: 0; }
+.zwa-field-optional-dot { color: #bbb; font-size: 0.7rem; margin-top: 3px; flex-shrink: 0; }
+.zwa-field-name  { font-size: 0.84rem; font-weight: 600; color: var(--text); display: block; }
+.zwa-field-hint  { font-size: 0.78rem; color: var(--text-secondary); line-height: 1.4; margin-top: 1px; }
+.zwa-optional-header {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  padding: 10px 0 4px;
+}
+
+/* Suggestions */
+.zwa-suggestion-item {
+  background: var(--chip-bg);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.zwa-suggestion-item:last-child { margin-bottom: 0; }
+.zwa-suggestion-item strong {
+  font-size: 0.83rem;
+  font-weight: 600;
+  color: var(--accent);
+  display: block;
+  margin-bottom: 4px;
+}
+.zwa-suggestion-item p {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Transitions */
+.zwa-transitions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.zwa-transition-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  background: #e8f0fe;
+  color: #1a73e8;
+  border: 1px solid #c5d8fc;
+}
+[data-theme="dark"] .zwa-transition-badge {
+  background: #172237;
+  color: #60a5fa;
+  border-color: #2a3f5f;
+}
+.zwa-transition-final {
+  background: #e6f4ea;
+  color: #2e7d32;
+  border-color: #c3e6cb;
+}
+[data-theme="dark"] .zwa-transition-final {
+  background: #1a2e1a;
+  color: #68d391;
+  border-color: #2d5a2d;
+}
+
+/* ── Setup guide tab ── */
+.zwa-setup-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.zwa-setup-step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  background: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  padding: 20px 22px;
+}
+.zwa-step-num {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.zwa-step-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.zwa-step-icon { font-size: 1.1rem; }
+.zwa-step-header strong { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+.zwa-step-desc {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+.zwa-step-desc code {
+  background: var(--chip-bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.82rem;
+  color: var(--text);
+}
+
+/* ── Config tab ── */
+.zwa-config-card {
+  background: var(--card-bg);
+  border-radius: 12px;
+  box-shadow: var(--card-shadow);
+  padding: 24px 28px;
+  margin-bottom: 24px;
+}
+.zwa-config-card h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.zwa-config-card p {
+  font-size: 0.87rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 14px;
+}
+.zwa-code-block {
+  position: relative;
+  background: var(--chip-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--text);
+  overflow-x: auto;
+  white-space: pre;
+}
+.zwa-copy-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.zwa-copy-btn:hover { background: var(--accent-hover); }
+
+/* ── Responsive ── */
+@media (max-width: 760px) {
+  .zwa-intro-card { flex-direction: column; gap: 16px; padding: 20px 16px; }
+  .zwa-demo-layout { grid-template-columns: 1fr; }
+  .zwa-flow-sidebar { display: none; }
+  .zwa-tab-btn { padding: 10px 12px; font-size: 0.82rem; }
+  .zwa-setup-step { padding: 14px 16px; }
+  .zwa-wrap { padding: 0 12px 40px; }
+}

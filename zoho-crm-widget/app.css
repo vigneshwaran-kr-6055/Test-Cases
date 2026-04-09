@@ -1,0 +1,345 @@
+/* ==========================================================
+   Workboard Zia AI Assistant – Widget Styles
+   ========================================================== */
+
+/* ── Reset & base ── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  background: transparent;
+  color: #333;
+}
+
+/* ── Launcher button ── */
+.zia-launcher {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: #1a73e8;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(26,115,232,0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  z-index: 9000;
+}
+.zia-launcher:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 24px rgba(26,115,232,0.6);
+}
+.zia-launcher:focus-visible {
+  outline: 3px solid #4a9eff;
+  outline-offset: 3px;
+}
+.zia-icon { width: 36px; height: 36px; }
+
+/* Pulsing ring */
+.zia-pulse {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 3px solid rgba(26,115,232,0.4);
+  animation: zia-pulse 2.4s ease-in-out infinite;
+}
+@keyframes zia-pulse {
+  0%   { transform: scale(1);   opacity: 0.9; }
+  70%  { transform: scale(1.35); opacity: 0;   }
+  100% { transform: scale(1.35); opacity: 0;   }
+}
+
+/* ── Assistant panel ── */
+.zia-panel {
+  position: fixed;
+  bottom: 96px;
+  right: 24px;
+  width: 380px;
+  max-width: calc(100vw - 32px);
+  max-height: 520px;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 8999;
+  animation: zia-slide-in 0.22s ease;
+}
+.zia-panel[hidden] { display: none; }
+@keyframes zia-slide-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to   { opacity: 1; transform: translateY(0)   scale(1);     }
+}
+
+/* Header */
+.zia-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 12px;
+  background: linear-gradient(135deg, #1a73e8 0%, #0d47a1 100%);
+  color: #fff;
+  flex-shrink: 0;
+}
+.zia-panel-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.zia-header-icon { width: 22px; height: 22px; flex-shrink: 0; }
+.zia-panel-header h2 { font-size: 0.95rem; font-weight: 600; color: #fff; }
+.zia-close-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,0.85);
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.zia-close-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+
+/* Stage bar */
+.zia-stage-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: #f0f6ff;
+  border-bottom: 1px solid #dce8fc;
+  flex-shrink: 0;
+}
+.zia-stage-label {
+  font-size: 0.75rem;
+  color: #5f6b7c;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.zia-stage-badge {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #1a73e8;
+  background: #dce8fc;
+  border-radius: 20px;
+  padding: 2px 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+/* Tabs */
+.zia-tabs {
+  display: flex;
+  border-bottom: 2px solid #e8edf3;
+  background: #fafbfc;
+  flex-shrink: 0;
+}
+.zia-tab {
+  flex: 1;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  padding: 9px 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #5f6b7c;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.zia-tab:hover { color: #1a73e8; }
+.zia-tab.active { color: #1a73e8; border-bottom-color: #1a73e8; }
+
+/* Panes */
+.zia-pane {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.zia-pane[hidden] { display: none; }
+
+/* Chat area */
+.zia-chat-area {
+  flex: 1;
+  padding: 14px 14px 8px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.zia-message {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+.zia-message.zia-user { flex-direction: row-reverse; }
+.zia-avatar {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.zia-bubble {
+  background: #f0f2f5;
+  border-radius: 12px 12px 12px 2px;
+  padding: 8px 12px;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #333;
+  max-width: 78%;
+  word-break: break-word;
+}
+.zia-message.zia-user .zia-bubble {
+  background: #1a73e8;
+  color: #fff;
+  border-radius: 12px 12px 2px 12px;
+}
+.zia-bubble strong { font-weight: 600; }
+.zia-bubble ul { margin: 6px 0 0 16px; }
+.zia-bubble li { margin-bottom: 4px; }
+
+/* Typing indicator */
+.zia-typing .zia-bubble {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 10px 14px;
+}
+.zia-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: #999;
+  animation: zia-bounce 1.2s ease-in-out infinite;
+}
+.zia-dot:nth-child(2) { animation-delay: 0.2s; }
+.zia-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes zia-bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40%            { transform: translateY(-6px); }
+}
+
+/* Input row */
+.zia-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid #e8edf3;
+  background: #fff;
+  flex-shrink: 0;
+}
+.zia-input {
+  flex: 1;
+  border: 1.5px solid #d0d7e3;
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-size: 0.85rem;
+  outline: none;
+  transition: border-color 0.15s;
+  color: #333;
+  background: #fafbfc;
+}
+.zia-input:focus { border-color: #1a73e8; background: #fff; }
+.zia-input::placeholder { color: #aab0bc; }
+.zia-send-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #1a73e8;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s;
+}
+.zia-send-btn:hover { background: #1558b0; }
+.zia-send-btn:active { transform: scale(0.92); }
+.zia-send-btn svg { width: 16px; height: 16px; fill: #fff; transform: rotate(-45deg); }
+
+/* Required fields pane */
+.zia-required-list {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+}
+.zia-field-card {
+  border: 1.5px solid #dce8fc;
+  border-radius: 10px;
+  padding: 10px 14px;
+  background: #f8fbff;
+}
+.zia-field-name {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: #1a73e8;
+  margin-bottom: 4px;
+}
+.zia-field-hint {
+  font-size: 0.8rem;
+  color: #5f6b7c;
+  line-height: 1.45;
+}
+.zia-field-status {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.zia-field-status.filled   { background: #e6f4ea; color: #2e7d32; }
+.zia-field-status.missing  { background: #fdecea; color: #c62828; }
+.zia-field-status.optional { background: #fff8e1; color: #e65100; }
+
+/* Suggestions pane */
+.zia-suggestions-list {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+.zia-suggestion-card {
+  border-left: 3px solid #1a73e8;
+  padding: 10px 12px;
+  background: #f0f6ff;
+  border-radius: 0 8px 8px 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #333;
+}
+.zia-suggestion-card strong { font-weight: 600; color: #1a73e8; display: block; margin-bottom: 3px; }
+
+/* Loading text */
+.zia-loading-text {
+  font-size: 0.82rem;
+  color: #aab0bc;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Error state */
+.zia-error-banner {
+  background: #fdecea;
+  color: #c62828;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  margin: 8px 14px;
+}

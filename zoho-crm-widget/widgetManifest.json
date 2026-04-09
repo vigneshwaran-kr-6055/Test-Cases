@@ -1,0 +1,22 @@
+{
+  "uniqueName": "workboard_zia_assistant",
+  "displayName": "Workboard AI Assistant",
+  "version": "1.0.0",
+  "platform": "ZohoCRM",
+  "type": "Custom Widget",
+  "location": [
+    {
+      "module": "Workboard",
+      "type": "Record Detail",
+      "position": "Custom Button"
+    }
+  ],
+  "permissions": [
+    "ZohoCRM.modules.workboard.READ",
+    "ZohoCRM.modules.workboard.UPDATE",
+    "ZohoCRM.blueprint.READ",
+    "ZohoZia.assistant.EXECUTE"
+  ],
+  "apiDomain": "https://www.zohoapis.com",
+  "homepage": "index.html"
+}
